@@ -1,10 +1,17 @@
-import React from "react";
+import React, { Suspense, lazy, useEffect } from "react";
 import Header from "./Header";
 import Hero from "./Hero";
-import RecruiterSection from "./sections/RecruiterSection";
 import shaurya from "../assets/images/shaurya.jpg";
+import SkeletonLoader from "./SkeletonLoader";
+
+// Lazy load the section component
+const RecruiterSection = lazy(() => import("./sections/RecruiterSection"));
 
 function Recruiter() {
+  // Scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
   const handleResumeClick = () => {
     window.open("https://drive.google.com/file/d/1HDc_UGIK7wdf4d3xHPgfwh64ffH3ktg6/view?usp=sharing", "_blank");
   };
@@ -25,7 +32,9 @@ function Recruiter() {
         onPrimaryButtonClick={handleResumeClick}
         onSecondaryButtonClick={handleMoreInfoClick}
       />
-      <RecruiterSection />
+      <Suspense fallback={<SkeletonLoader type="section" />}>
+        <RecruiterSection />
+      </Suspense>
     </div>
   );
 }

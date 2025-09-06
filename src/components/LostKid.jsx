@@ -1,10 +1,17 @@
-import React from "react";
+import React, { Suspense, lazy, useEffect } from "react";
 import Header from "./Header";
 import Hero from "./Hero";
-import LostKidSection from "./sections/LostKidSection";
 import shaurya from "../assets/images/shaurya2.jpeg";
+import SkeletonLoader from "./SkeletonLoader";
+
+// Lazy load the section component
+const LostKidSection = lazy(() => import("./sections/LostKidSection"));
 
 function LostKid() {
+  // Scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
   const handleApplyClick = () => {
     window.open("https://vector-nine.vercel.app/", "_blank");
   };
@@ -25,7 +32,9 @@ function LostKid() {
         onPrimaryButtonClick={handleApplyClick}
         onSecondaryButtonClick={handleMoreInfoClick}
       />
-      <LostKidSection />
+      <Suspense fallback={<SkeletonLoader type="section" />}>
+        <LostKidSection />
+      </Suspense>
     </div>
   );
 }

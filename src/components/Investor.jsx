@@ -1,10 +1,17 @@
-import React from "react";
+import React, { Suspense, lazy, useEffect } from "react";
 import Header from "./Header";
 import Hero from "./Hero";
 import shaurya from "../assets/images/shaurya.jpg";
-import InvestorSection from "./sections/InvestorSection";
+import SkeletonLoader from "./SkeletonLoader";
+
+// Lazy load the section component
+const InvestorSection = lazy(() => import("./sections/InvestorSection"));
 
 function Investor() {
+  // Scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
   const handlePitchClick = () => {
     window.open("https://www.linkedin.com/in/astro-dude/", "_blank");
   };
@@ -25,7 +32,9 @@ function Investor() {
         onPrimaryButtonClick={handlePitchClick}
         onSecondaryButtonClick={handleDetailsClick}
       />
-      <InvestorSection />
+      <Suspense fallback={<SkeletonLoader type="section" />}>
+        <InvestorSection />
+      </Suspense>
       
     </div>
   );

@@ -1,10 +1,17 @@
-import React from "react";
+import React, { Suspense, lazy, useEffect } from "react";
 import Header from "./Header";
 import Hero from "./Hero";
-import StalkerSection from "./sections/StalkerSection";
 import shaurya from "../assets/images/shaurya3.jpg";
+import SkeletonLoader from "./SkeletonLoader";
+
+// Lazy load the section component
+const StalkerSection = lazy(() => import("./sections/StalkerSection"));
 
 function Stalker() {
+  // Scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
   const handleProjectsClick = () => {
     window.open("https://www.instagram.com/_shauryanium.perfrauleinide_/", "_blank");
   };
@@ -26,7 +33,9 @@ function Stalker() {
         onSecondaryButtonClick={handleMoreInfoClick}
       />
 
-      <StalkerSection />
+      <Suspense fallback={<SkeletonLoader type="section" />}>
+        <StalkerSection />
+      </Suspense>
       
     </div>
   );
