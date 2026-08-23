@@ -606,6 +606,18 @@ async function tryPortrait(instance: Instance): Promise<void> {
  *           narrow remap (0.09-0.72) spends the whole ramp on the part that carries the picture,
  *           and no midtone weighting is needed because there is no clutter to suppress.
  *
+ *           Its focus is 0.5 at zoom 1, which is the one combination that samples the photograph
+ *           exactly and nothing else. At zoom 1 the sampled height IS the full image height, so any
+ *           other focus hangs off an edge: the old 0.34 put the window at -16% to 84%, and the uv
+ *           clamp turned that missing 16% into the top row of sky smeared down the band while the
+ *           bottom 16% went unused.
+ *
+ *           Cropping into the top to lose the sky was tried at zoom 1.12 and reverted. The rider's
+ *           face sits at 22-33% from the top, and only ~62% of the canvas is on screen at a time
+ *           (the rest is parallax headroom), so pushing the window down to bury the sky pushed the
+ *           face out of the visible slice at the same time. Fully zoomed out is what keeps the face
+ *           in frame; the sky is the price.
+ *
  *   office  histogram 0-255 WITH clipping: a black tee at 1 and a white desk at 255, and a quarter
  *           of the frame above 216. The beach's white point would flatten all of that to one
  *           value, so the range opens up to 0.02-0.92. It also needs gamma: the room is full of
@@ -624,6 +636,14 @@ interface BandTuning {
   level: number;
   gamma: number;
   zoom: number;
+  /**
+   * Ceiling on how much of the photograph's HEIGHT may be shown, measured against the visible band.
+   *
+   * Exists to stop a narrow band from cover-fitting to the full image height and bringing back the
+   * empty sky and sand a crop was chosen to remove. A photograph that genuinely wants its whole
+   * height sets this to 1 and opts out.
+   */
+  maxSpanY: number;
 }
 
 const BAND_TUNING: Record<string, BandTuning> = {
@@ -632,12 +652,12 @@ const BAND_TUNING: Record<string, BandTuning> = {
    * clear of the headline. The headline ends at 78% of the frame, so the face has to sit beyond that;
    * at this zoom the crop shows about half the width, which is what makes that reachable at all.
    */
-  '/assets/bands/office.jpg': { focus: [0.34, 0.46], range: [0.02, 0.92], level: 0.30, gamma: 1.5, zoom: 1.15 },
-  '/assets/bands/beach.jpg': { focus: [0.46, 0.34], range: [0.09, 0.72], level: 0.26, gamma: 1.0, zoom: 1.0 },
+  '/assets/bands/office.jpg': { focus: [0.34, 0.46], range: [0.02, 0.92], level: 0.30, gamma: 1.5, zoom: 1.15, maxSpanY: 0.66 },
+  '/assets/bands/beach.jpg': { focus: [0.46, 0.50], range: [0.09, 0.72], level: 0.26, gamma: 1.0, zoom: 1.0, maxSpanY: 1 },
 };
 
 /* Deliberately conservative: a photograph nobody has measured gets a safe mid remap, not a guess. */
-const BAND_FALLBACK: BandTuning = { focus: [0.5, 0.45], range: [0.05, 0.88], level: 0.26, gamma: 1.3, zoom: 1.0 };
+const BAND_FALLBACK: BandTuning = { focus: [0.5, 0.45], range: [0.05, 0.88], level: 0.26, gamma: 1.3, zoom: 1.0, maxSpanY: 0.66 };
 
 /**
  * The two ends of the band's duotone ramp, in sRGB, derived from the palette tokens.
@@ -735,7 +755,7 @@ async function tryBand(instance: Instance, tint: 'ink' | 'accent', src: string):
        * At most 66% of the photograph's height is ever shown. Below that the sky above the hair
        * and the horizon below the shirt come into frame; above it the crop starts clipping hair.
        */
-      uMaxSpanY: { value: 0.66 },
+      uMaxSpanY: { value: tune.maxSpanY },
       // Recomputed on every resize from the real layout; see resize().
       uWindowFrac: { value: 1 },
       uFloor: { value: ramp.floor },

@@ -1455,6 +1455,27 @@
   inset: 0;
 }
 
+/*
+ * The motto band shows the photograph at its full width, which is what fixes its own aspect.
+ *
+ * Cover-fit crops whichever axis is proportionally longer, so which axis gets cropped is decided by
+ * the CANVAS aspect, and the canvas is taller than the band by exactly this overhang. At 160% the
+ * canvas came out squarer than the 16:9 source, so the width was the axis being cropped and 7% of
+ * the frame was thrown away no matter what the zoom said.
+ *
+ * 148% is where the canvas aspect meets the source's: at a 1440 viewport that is an 805px canvas
+ * over a 544px band, 1.789 against the photograph's 1.778, so both axes are shown essentially
+ * whole. Going shorter would start cropping the height instead, and going taller crops the width
+ * again, so this is the widest the band can be rather than a preference.
+ *
+ * It costs parallax travel, 326px down to 261px, which is the trade being made. The experience band
+ * keeps the full 160% because its photograph is deliberately cropped tight.
+ */
+.motto_bg .band_media {
+  top: -24%;
+  height: 148%;
+}
+
 .motto_content {
   position: relative;
   width: 100%;
