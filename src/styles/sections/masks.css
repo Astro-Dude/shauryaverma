@@ -1,0 +1,217 @@
+/*
+ * The three reveal primitives, all built on the same idea: render the content twice —
+ * a dimmed "deep" copy that is always visible, and a full-strength copy clipped to nothing —
+ * then animate the clip. Nothing fades; everything wipes. That is what gives the reference
+ * its particular mechanical feel.
+ *
+ *   heading-mask           a red band opening from the centre line   (hover, CSS-driven)
+ *   simple-masking         an inline left-to-right wipe              (scroll-driven)
+ *   scroll-paragraph-mask  the same wipe, per line of a paragraph    (scroll-driven)
+ */
+
+/* ---------- heading-mask: the row hover ---------- */
+
+.heading-mask {
+  position: relative;
+  border-top: 1px solid var(--c-hairline);
+}
+
+.heading-mask:last-child {
+  border-bottom: 1px solid var(--c-hairline);
+}
+
+/* `__now` marks the first row of a group, which the reference leaves un-ruled. */
+.heading-mask__now {
+  border-top: 0;
+}
+
+/* The dimmed copy is lifted out of flow; the masked copy below it sets the row height. */
+/*
+ * Both copies carry an explicit z-index.
+ *
+ * Without it the band loses: `.simple-masking .is-deep` inside the resting copy sets
+ * `z-index: 1`, and because neither wrapper establishes a stacking context that 1 competes
+ * directly against the band's `auto` (0) and paints the dim heading *over* the red band. The
+ * symptom is a revealed row showing beige text on red instead of dark.
+ */
+.heading-mask_el__deep {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 1;
+}
+
+.heading-mask_el__masking {
+  position: relative;
+  z-index: 2;
+  /* Own stacking context, so nothing inside the resting copy can climb over the band. */
+  isolation: isolate;
+  background: var(--c-red);
+  color: var(--c-bg);
+  /* Collapsed to the centre line. */
+  clip-path: inset(50% 0 50% 0);
+  pointer-events: none;
+  transition: clip-path var(--dur-mask-out) var(--ease-out);
+}
+
+.heading-mask.is-hover .heading-mask_el__masking {
+  clip-path: inset(0);
+  transition: clip-path var(--dur-mask-in) var(--ease-out);
+}
+
+/*
+ * Inside the red layer there is no hover, so the roles swap: the masking copy is the one on
+ * show (it is also the copy that sets the row height, which is why both layers must keep it),
+ * and the deep copy becomes the invisible spacer.
+ *
+ * Keeping both copies in both layers is what makes the rows the same height in each, and the
+ * whole reveal depends on that.
+ */
+.layer__red .heading-mask_el__masking {
+  clip-path: inset(0);
+  background: transparent;
+  color: var(--c-bg);
+  transition: none;
+}
+
+.layer__red .heading-mask_el__deep {
+  opacity: 0;
+}
+
+/* ---------- simple-masking: inline wipe ----------
+ *
+ * Scoped to the hook element, NOT to a `.simple-masking` ancestor.
+ *
+ * The module inserts its two copies inside `.js-simple-masking_el`, and some of those live
+ * without a `.simple-masking` wrapper (the history rows, for one). Keying the rules off the
+ * ancestor meant the dim copy never left the flow there, so both copies stacked and every role
+ * and employer rendered twice. Keying them off the hook makes the effect work wherever it is
+ * attached.
+ *
+ * The child combinator matters too: `.is-masking` is also used by the paragraph wipe, and a
+ * bare `.is-masking` rule would reach into it. */
+
+.simple-masking {
+  position: relative;
+}
+
+.simple-masking_el {
+  display: inline-block;
+}
+
+/* Positioning context for the absolutely-placed dim copy. */
+.js-simple-masking_el {
+  position: relative;
+  display: inline-block;
+  vertical-align: top;
+}
+
+.js-simple-masking_el > .is-deep,
+.js-simple-masking_el > .is-masking {
+  display: inline-block;
+  /*
+   * `vertical-align: top` is load-bearing.
+   *
+   * An inline-block aligns on the baseline of its LAST line, so a copy holding two lines (a role
+   * plus an employer) gets pushed down by the height of the first one: the in-flow copy landed
+   * 39px below the absolutely-placed one, and the host grew to fit both. Aligning to the top
+   * edge removes baseline alignment from the equation while keeping the shrink-to-fit width the
+   * wipe needs.
+   */
+  vertical-align: top;
+  /* Descenders and italic overhang would otherwise clip against the inset edge. */
+  padding-right: 10px;
+}
+
+.js-simple-masking_el > .is-deep {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  opacity: var(--c-dim);
+}
+
+.js-simple-masking_el > .is-masking {
+  --size: 100%;
+  position: relative;
+  z-index: 2;
+  clip-path: inset(0 var(--size) 0 0);
+}
+
+/* ---------- scroll-paragraph-mask: per-line wipe ---------- */
+
+.scroll-paragraph-mask {
+  position: relative;
+}
+
+.scroll-paragraph-mask .line {
+  /* Room for descenders, since each line is clipped independently. */
+  padding-bottom: 0.2em;
+}
+
+.scroll-paragraph-mask.is-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  opacity: var(--c-dim);
+}
+
+.scroll-paragraph-mask.is-masking {
+  --size: 100%;
+  position: relative;
+  z-index: 2;
+}
+
+.scroll-paragraph-mask.is-masking .line {
+  clip-path: inset(0 var(--size) 0 0);
+}
+
+/* ---------- Split-text reveal targets ---------- */
+
+/* SplitText wraps each char/line; the inner element is what actually moves, so the outer
+ * can hide the overflow and give the type a hard edge to rise from. */
+/* The outer element clips; the inner element moves. The padding/negative-margin pair gives
+ * descenders room to exist without the clip edge cutting them off. */
+.split-line {
+  display: block;
+  overflow: hidden;
+  /* Just enough room for a descender to exist below the tight 84% leading. Kept small: the
+   * padding still extends the scrollable area of any ancestor that hides its overflow, and the
+   * hero is exactly one viewport tall. */
+  padding-bottom: 0.08em;
+  margin-bottom: -0.08em;
+}
+
+.split-char,
+.split-char__inner,
+.split-line__inner {
+  display: inline-block;
+  will-change: transform;
+}
+
+/*
+ * Reduced motion: show the finished state of every primitive. Without this the masked copies
+ * stay clipped to nothing and the page reads as half-empty.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .heading-mask_el__masking {
+    transition: none;
+  }
+
+  .js-simple-masking_el > .is-masking,
+  .scroll-paragraph-mask.is-masking .line {
+    clip-path: none !important;
+  }
+
+  .js-simple-masking_el > .is-deep,
+  .scroll-paragraph-mask.is-bg {
+    display: none;
+  }
+
+  .split-char__inner,
+  .split-line__inner {
+    transform: none !important;
+    opacity: 1 !important;
+  }
+}

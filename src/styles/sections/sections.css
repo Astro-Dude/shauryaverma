@@ -1,0 +1,1748 @@
+/*
+ * Section layout.
+ *
+ * Values are the reference's own: rem below 768px, and vh-based vertical rhythm above it, so
+ * the long scroll keeps its proportions on tall and short screens alike. `--vh` is written
+ * from JS (see setViewportUnit) because mobile browsers lie about `100vh` while the URL bar
+ * is collapsing.
+ */
+
+:root {
+  --vh: 1vh;
+}
+
+/* ---------- header / footer ----------
+ * Both are fixed and both use `mix-blend-mode: difference`, which is what keeps them legible
+ * over the dark layer AND the red one without a single line of JS. */
+
+.header {
+  --top: 1.25rem;
+  --color-link: hsla(37, 18%, 66%, 0.5);
+  --color-link-active: var(--c-text);
+
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  z-index: 9;
+  mix-blend-mode: difference;
+}
+
+.header_logo {
+  position: fixed;
+  top: var(--top);
+  left: var(--screen-x);
+  margin-top: 0.3125rem;
+}
+
+.link-logo {
+  display: block;
+  /* The magnet writes transforms here; keep it off the compositor's critical path. */
+  will-change: transform;
+}
+
+.logo-mark {
+  display: block;
+  font-family: Jost, 'Nunito Sans', sans-serif;
+  font-weight: 700;
+  /* The tracking is the design: this is what closes the S and V into one unit. */
+  letter-spacing: -0.07em;
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--c-text);
+  transition: color 0.4s var(--ease-out);
+}
+
+.link-logo:hover .logo-mark,
+.link-logo:focus-visible .logo-mark {
+  color: var(--c-red);
+}
+
+.header_menu {
+  position: fixed;
+  top: var(--top);
+  right: var(--screen-x);
+}
+
+.header_menu_list {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+}
+
+/* The nav label swaps by sliding a second copy up from below. */
+.header_menu_item_inner {
+  display: block;
+  position: relative;
+  clip-path: inset(0);
+}
+
+.header_menu_item_link {
+  display: block;
+  transition: color 0.4s var(--ease-out), transform 0.4s var(--ease-out);
+}
+
+.header_menu_item_link__deep {
+  background: transparent;
+  color: var(--color-link);
+}
+
+.header_menu_item_link__active {
+  position: absolute;
+  top: 0;
+  right: 0;
+  color: var(--color-link-active);
+  transform: translateY(100%);
+}
+
+.header_menu_item:hover .header_menu_item_link__deep,
+.header_menu_item:focus-within .header_menu_item_link__deep {
+  transform: translateY(-100%);
+}
+
+.header_menu_item:hover .header_menu_item_link__active,
+.header_menu_item:focus-within .header_menu_item_link__active {
+  transform: translateY(0);
+}
+
+.footer {
+  --bottom: 2rem;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  z-index: 9;
+  mix-blend-mode: difference;
+  pointer-events: none;
+}
+
+.footer_socials {
+  position: fixed;
+  bottom: var(--bottom);
+  left: calc(var(--screen-x) - 0.75rem);
+  display: none;
+  pointer-events: auto;
+}
+
+/* A vertical stack of glyphs, no labels: the icons carry it, and the accessible name lives in
+ * the visually-hidden span. Spaced generously because each one is magnetic and needs room to
+ * move toward the cursor without colliding with its neighbours. */
+.footer_socials {
+  display: grid;
+  gap: 1.9rem;
+}
+
+.footer_socials .social_link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.6rem;
+  height: 2.6rem;
+  color: hsla(37, 18%, 66%, 0.55);
+  transition: color 0.4s var(--ease-out);
+  /* The magnet writes transforms here; keep it off the compositor's critical path. */
+  will-change: transform;
+}
+
+.footer_socials .social_link:hover,
+.footer_socials .social_link:focus-visible {
+  color: var(--c-text);
+}
+
+.footer_socials svg {
+  width: 1.45rem;
+  height: 1.45rem;
+  fill: currentColor;
+}
+
+/* Stroked glyphs carry their own fill/stroke attributes; don't let the blanket fill above
+ * paint over them. */
+.footer_socials svg[stroke] {
+  fill: none;
+}
+
+.footer_sound {
+  --color: var(--c-text);
+  --color-label: #4d4d4d;
+
+  position: fixed;
+  right: calc(var(--screen-x) - 0.35rem);
+  bottom: var(--bottom);
+  display: flex;
+  gap: 0.4em;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--color-label);
+  cursor: pointer;
+  pointer-events: auto;
+
+  /* Set on its side, reading bottom-to-top: vertical-rl runs the text downward, and the
+   * half-turn flips it so it climbs the right edge the way the design has it. */
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+}
+
+.footer_sound_list_item {
+  color: var(--color);
+  font-weight: 700;
+}
+
+.footer_sound_label {
+  transition: color 0.4s var(--ease-out);
+}
+
+/* On hover the dim "SOUND" label comes up to match the ON/OFF state beside it, so the control
+ * reads as one word rather than a label and a value. Focus gets the same treatment, which the
+ * reference omits. */
+.footer_sound:hover .footer_sound_label,
+.footer_sound:focus-visible .footer_sound_label {
+  color: var(--color);
+}
+
+/* Exactly one state is present at a time. A sliding pair reads as a glitch here, because in
+ * vertical writing mode the "off-screen" word overlaps the visible one. */
+.footer_sound[data-state='on'] .js-footer_sound_list_item__off,
+.footer_sound[data-state='off'] .js-footer_sound_list_item__on {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .header { --top: 2.5rem; }
+  .footer { --bottom: 3rem; }
+  /* `grid`, not `block`: this rule reveals the list above the mobile breakpoint, and setting
+   * `block` here would silently cancel the `gap` that spaces the icons. */
+  .footer_socials { display: grid; }
+}
+
+@media (min-width: 1200px) {
+  .header { --top: 6.5476190476vh; }
+  .footer { --bottom: 9.9206349206vh; }
+}
+
+/* ---------- loader ---------- */
+
+.page-loading {
+  --size-circle: 16.875rem;
+
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  /* Column, not row: the mark and the Start button stack. Without the direction they laid out
+   * side by side and the button overlapped the mark. */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--c-bg);
+}
+
+/*
+ * Only the mark is in flow here; the ring and the counter are hung off it. On completion those
+ * two fade out and the Start button stays put, because it was never sitting below their boxes.
+ */
+.page-loading_stack {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.page-loading_circle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  /* Explicit min/max as well as width/height: as a child of a flex container the SVG was being
+   * resolved against the line box and collapsing to a sliver. */
+  width: var(--size-circle);
+  height: var(--size-circle);
+  min-width: var(--size-circle);
+  min-height: var(--size-circle);
+  margin: calc(var(--size-circle) / -2) 0 0 calc(var(--size-circle) / -2);
+  color: var(--c-text);
+  /* Start the ring at 12 o'clock. */
+  transform: rotate(-90deg);
+}
+
+.page-loading_logo {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo-mark__loader {
+  color: var(--c-text);
+}
+
+/* The loader mark is optically centred: uppercase letters have no descender, so a box centred on
+ * the glyph box sits slightly low. */
+.page-loading_logo .logo-mark {
+  margin-top: -0.08em;
+}
+
+.page-loading_text {
+  position: absolute;
+  top: calc(50% + var(--size-circle) / 2 + 1.6rem);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.75rem;
+  font-weight: 700;
+  /* Tracked, but not so far that "62%" reads as three separate characters. */
+  letter-spacing: 0.14em;
+  white-space: nowrap;
+  opacity: 0;
+}
+
+.page-loading_start {
+  --size-w: 12.5rem;
+
+  /* In flow, directly under the mark: the reference sits it about 80px below, not pinned to the
+   * bottom of the viewport. */
+  position: relative;
+  margin-top: 5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--size-w);
+  height: 2.875rem;
+  background: transparent;
+  border: 1px solid var(--c-text);
+  border-radius: 4.375rem;
+  color: var(--c-text);
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: background 0.4s var(--ease-out), color 0.4s var(--ease-out);
+}
+
+.page-loading_start:hover {
+  background: var(--c-text);
+  color: var(--c-bg);
+}
+
+/*
+ * Focus is styled separately from hover.
+ *
+ * The button is auto-focused on completion, because it is the only control on the screen and a
+ * keyboard visitor should not have to hunt for it. But sharing the filled hover treatment meant
+ * every visitor arrived to a button that looked pressed, with the browser's blue ring around it.
+ * A faint halo in the site's own palette reads as focus without claiming to be hover.
+ */
+.page-loading_start:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px hsla(37, 18%, 66%, 0.22);
+}
+
+/* ---------- hero ---------- */
+
+.hero {
+  position: relative;
+  overflow: hidden;
+}
+
+.hero_bg {
+  position: absolute;
+  inset: 0;
+}
+
+.hero_bg canvas,
+.work_bg canvas,
+.motto_bg canvas,
+.client_list_3d canvas {
+  width: 100%;
+  height: 100%;
+}
+
+.hero_content {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* 95% of the viewport rather than a full screen, so the next section peeks in at the bottom
+   * edge and the page reads as scrollable on arrival. `--vh` is the measured viewport height
+   * (see setViewportUnit), because mobile browsers misreport 100vh while the URL bar collapses. */
+  height: calc(var(--vh) * 95);
+  min-height: 32.5rem;
+}
+
+.hero_content_inner {
+  margin-bottom: calc(var(--size-btn) / 2);
+}
+
+/* The line breaks in the headline are authored as <br>, so wrapping is always wrong — it
+ * splits a word across lines and destroys the stacked-word shape the design depends on.
+ * The block is centred and the section is full-bleed, so overhanging the column is fine. */
+.hero h1,
+.hero_content_inner_subtitle {
+  white-space: nowrap;
+}
+
+/* Accent words are set in red rather than a heavier weight — the whole headline is already
+ * at the display weight, so colour is the only axis left to emphasise with. */
+.hero h1 strong,
+.motto_content_heading strong {
+  color: var(--c-red);
+  font-weight: inherit;
+}
+
+/* Inside the red layer that inverts: the accent becomes the dark ink. */
+.layer__red .hero h1 strong,
+.layer__red .motto_content_heading strong {
+  color: var(--c-bg);
+}
+
+.hero_content_inner_subtitle {
+  margin-bottom: 0.9375rem;
+}
+
+@media (min-width: 1200px) {
+  .hero_content {
+    padding-top: 15.7738095238vh;
+    padding-bottom: 18.6507936508vh;
+  }
+
+  .hero_content_inner { margin-bottom: 0; }
+  .hero_content_inner_subtitle { margin-bottom: 1.875rem; }
+}
+
+/* ---------- about / what i do ---------- */
+
+.about { --size-canvas: 27rem; }
+
+.about_me {
+  padding-top: 12.5rem;
+  margin-bottom: 12.5rem;
+}
+
+.about_content_desc { max-width: 21.0625rem; }
+
+.about_ido {
+  position: relative;
+  padding-bottom: 12.5rem;
+}
+
+/* The cup prop, parallaxed against the scroll. Decorative only. */
+.about_ido_coffee {
+  position: absolute;
+  left: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.about_ido_inner {
+  width: var(--size-canvas);
+  height: var(--size-canvas);
+}
+
+.about_ido_inner canvas {
+  width: 100%;
+  height: 100%;
+}
+
+@media (min-width: 768px) {
+  .about { --size-canvas: 42rem; }
+  .about_me {
+    padding-top: 28.7698412698vh;
+    margin-bottom: 28.7698412698vh;
+  }
+  .about_content_desc { max-width: unset; }
+  /* Trimmed from the reference's 28.8vh: with six rows this section has to fit one screen. */
+  .about_ido { padding-bottom: 12vh; }
+  .about_ido_coffee { bottom: 0; }
+}
+
+@media (min-width: 1200px) {
+  /*
+   * Both props hang off their edge, as in the reference: only a sliver is on screen, which is
+   * what makes them read as objects sitting in the room rather than as illustrations. The mug
+   * must stay clear of the text column (which starts at the 2/12 grid offset) or it covers the
+   * first word of a row.
+   */
+  .about_ido_coffee {
+    bottom: unset;
+    top: calc(0px - var(--size-canvas) * 0.3);
+    left: calc(0px - var(--size-canvas) * 0.40);
+  }
+
+}
+
+/*
+ * Rows in the skills and projects lists.
+ *
+ * Each row is exactly one line of display type tall, with the heading and its description
+ * centred against each other so the revealed text lands on the same line as the resting text.
+ * No vertical padding: at this type size padding is what pushed the section past one screen.
+ */
+.about_ido .heading-mask_el,
+.client .heading-mask_el {
+  display: flex;
+  align-items: center;
+  min-height: 3.4rem;
+}
+
+/* The list type is set smaller than the hero. Six rows of 8.75rem would not fit one screen,
+ * and the row is a label here rather than a statement. */
+.about_ido .h1,
+.client .h1 {
+  font-size: 3.4rem;
+}
+
+/* ---------- experience / history ---------- */
+
+.work { position: relative; }
+
+/*
+ * The band runs PAST its own row, down over the History label.
+ *
+ * The reference does exactly this: its band's hard bottom edge lands below the "HISTORY" eyebrow,
+ * not above it, so the label reads as sitting on the photograph rather than the photograph stopping
+ * to make room for it.
+ *
+ * 2.25rem is that overhang. The eyebrow is about 21px tall, so this clears it by roughly 9px and cuts
+ * immediately under the text. 5rem was tried first and left a visible band of photograph hanging below
+ * the label with nothing in it.
+ *
+ * This is why `.work_experience` no longer clips its overflow: it used to, which pinned the band
+ * to the row. The clipping now happens on this element instead, via `.js-band`, so the over-tall
+ * parallax media is still contained.
+ */
+.work_bg {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: calc(100% + 2.25rem);
+}
+
+/*
+ * Shared band window, used by any section whose backdrop is a photograph.
+ *
+ * The media is deliberately taller than the window so the parallax has somewhere to go without
+ * ever pulling the photograph's own edge into frame: at a 900px viewport a band travels ~72px
+ * either side of centre, and 15% of a ~750px section is ~112px of slack per side. The window
+ * clips the overhang, and webgl.ts measures the ratio between the two to work out how much of the
+ * image is actually on screen.
+ */
+.js-band { overflow: hidden; }
+
+.band_media {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -15%;
+  height: 130%;
+}
+
+.band_media canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.work_content {
+  position: relative;
+  z-index: 2;
+}
+
+.work_content_desc { width: 20.3125rem; }
+
+/*
+ * The experience row IS the photo band: the image fills it, and the eyebrow and headline sit on
+ * top of the image rather than in a gap above it.
+ *
+ * Which means the padding is the band. The space above the eyebrow and below the headline is what
+ * gives the photograph room to be an image rather than a strip behind four lines of type, and the
+ * bottom padding is what carries it down to meet the History list.
+ */
+.work_experience {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding-top: 12.5rem;
+  padding-bottom: 12.5rem;
+}
+
+.work_history {
+  position: relative;
+  /* Flush: the History list starts exactly where the photograph's hard bottom edge ends. */
+  margin-top: 0;
+}
+
+.work_history_heading { margin-bottom: 1.875rem; }
+
+/*
+ * Row padding lives on the row, NOT on `.simple-masking_el`.
+ *
+ * That element also hosts the wipe's two copies, and an absolutely-positioned child resolves
+ * against the PADDING box: with padding here the dim copy sat at 0 while the in-flow copy
+ * started 39px lower, so every role and employer appeared twice, once above the other.
+ */
+.work_history .heading-mask_el {
+  padding-top: 1.875rem;
+  padding-bottom: 1.875rem;
+}
+
+@media (min-width: 768px) {
+  .work_content_desc { width: 95%; }
+  .work_experience {
+    padding-top: 29.7619047619vh;
+    padding-bottom: 29.7619047619vh;
+  }
+  .work_history_heading { margin-bottom: 2.1875rem; }
+  .work_history .heading-mask_el {
+    padding-top: 2.9375rem;
+    padding-bottom: 2.9375rem;
+  }
+}
+
+@media (min-width: 1200px) {
+  .work_content_desc { width: unset; }
+}
+
+/* ---------- projects ---------- */
+
+.client {
+  position: relative;
+  z-index: 1;
+  max-width: 100%;
+}
+
+.client_info {
+  padding-top: 12.5rem;
+  margin-bottom: 12.5rem;
+}
+
+.client_content_desc {
+  height: 20rem;
+  max-width: 20.375rem;
+}
+
+.client_list {
+  position: relative;
+  margin-bottom: 12.5rem;
+}
+
+.client_list_3d {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.client_list_3d_inner {
+  position: relative;
+  width: 150%;
+  height: 150%;
+  margin-left: -12.5rem;
+  margin-top: -6.25rem;
+}
+
+.client_list_inner { position: relative; }
+
+.client .heading-mask_el a {
+  transition: opacity 0.4s var(--ease-out);
+}
+
+/* Pagination dots — a count, not a control. */
+.dots {
+  display: flex;
+  gap: 0.5rem;
+  padding-top: 1.5rem;
+}
+
+.dots span {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--c-text);
+  opacity: 0.35;
+}
+
+@media (min-width: 768px) {
+  .client_info {
+    padding-top: 29.7619047619vh;
+    margin-bottom: 29.7619047619vh;
+  }
+  .client_list { margin-bottom: 28.7698412698vh; }
+
+  /* Pushed to the right half, clear of the project names. Centred it would sit directly behind
+   * the type and turn the whole column to mud. */
+  .client_list_3d_inner {
+    width: 70%;
+    height: 100%;
+    margin-left: auto;
+    margin-right: -6%;
+    margin-top: unset;
+  }
+}
+
+@media (min-width: 1200px) {
+  .client_content_desc { height: unset; }
+}
+
+/* ---------- showcase ---------- */
+
+/*
+ * A tall runway with a sticky window inside it.
+ *
+ * The section is 155vh, and the window sticks to the top of the viewport for the last 55vh of that,
+ * so the scroll slows over the panel: it grows to full screen, holds there long enough to read what
+ * the agent is doing, then releases. That hold is the friction, and 55vh is about half a screen of
+ * scrolling - 140vh was tried first and it read as the page having jammed.
+ *
+ * CSS sticky rather than a ScrollTrigger pin, and that is not a stylistic preference. Pinning would
+ * move one layer's section and not the other's, and this page is two stacked copies of itself that
+ * have to stay in register to the pixel. Sticky is in the stylesheet, so both layers do it.
+ *
+ * `overflow: clip`, never `hidden`: `hidden` makes this a scroll container, which would capture the
+ * sticky child and it would never stick to the viewport at all.
+ */
+.videoPlayer {
+  position: relative;
+  height: calc(var(--vh) * 155);
+  overflow: clip;
+  cursor: pointer;
+}
+
+.videoPlayer_inner {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: calc(var(--vh) * 100);
+}
+
+/*
+ * The link out, sitting under the window.
+ *
+ * The reference centres its play disc because what is behind it is footage, and a disc over footage
+ * reads as an affordance. What is behind it here is an interface, and a circle over a file list reads
+ * as damage. Pinning it to the band's bottom-right did not work either: the fixed "Sound" label lives
+ * in exactly that corner and the two overlapped.
+ */
+.videoPlayer_btn {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 4.25rem;
+  height: 4.25rem;
+  background-color: transparent;
+  border: 1px solid var(--c-hairline);
+  border-radius: 50%;
+  color: var(--c-text);
+  cursor: pointer;
+  z-index: 9;
+  transition: background 0.4s var(--ease-out);
+}
+
+.videoPlayer_btn:hover,
+.videoPlayer_btn:focus-visible {
+  background: hsla(37, 18%, 66%, 0.12);
+}
+
+/* ---------- featured panel ---------- */
+
+/*
+ * BYOS's interface, rebuilt from its components.
+ *
+ * Every value here is from the project's own design system (BYOS/tokens.json, BYOS/theme.css) rather
+ * than from this page's palette, because the point is to show what the project looks like. Its two
+ * typefaces are licensed and are substituted, which is the same call this rebuild makes everywhere
+ * else it cannot ship a font.
+ *
+ * The tokens are scoped to this block so a light-on-white interface cannot leak into a page whose
+ * every other surface is #0d0d0d.
+ */
+.byos {
+  --ink: #17191c;
+  --paper: #ffffff;
+  --mist: #f2f2f3;
+  --fog: #fafafb;
+  --slate: #777b86;
+  --ash: #979799;
+  --smoke: #a3a6af;
+  /* Its tokens call this "the only chromatic surface in the system", so it is the only one used. */
+  --peach: #fbe1d1;
+  --sienna: #5d2a1a;
+  --line: #ececec;
+  --serif: ui-serif, Georgia, 'Times New Roman', serif;
+  --sans: 'Nunito Sans', ui-sans-serif, system-ui, sans-serif;
+
+  /*
+   * `--grow` is scrubbed 0.66 -> 1 as the band scrolls into place, which is how the reference treats
+   * its reel: it enters inset to the content column and expands as it rises. Measured on the
+   * reference, from x238-1201 to x0-1440 at a 1440 viewport.
+   *
+   * It stops short of the page edges rather than going truly full-bleed, so the window keeps a margin
+   * either side and still reads as a window.
+   */
+  --grow: 0;
+  margin-inline: auto;
+}
+
+/*
+ * The window SCALES, it does not stretch.
+ *
+ * `--grow` runs 0 to 1 as the band rises, taking the interface from an inset card with clear margins
+ * either side to filling the viewport edge to edge. The first attempt interpolated width and height
+ * and let the interior reflow, which broke it: at full screen the rows sat at the top, the ask bar at
+ * the bottom, and half the viewport was empty white in between.
+ *
+ * So the window keeps ONE design size and is scaled. Everything inside grows together and the
+ * composition survives at both ends. `--s0` and `--s1` are the two scales, written by showcase.ts on
+ * resize because they depend on the viewport in a way calc() cannot express: the end scale covers the
+ * larger of the two axes so the interface fills the screen rather than letterboxing.
+ */
+.byos_scale {
+  --s: calc(var(--s0) + (var(--s1) - var(--s0)) * var(--grow));
+  transform: scale(var(--s));
+  transform-origin: center center;
+  /* Fallbacks, so the panel is never invisible if the module has not measured yet. */
+  --s0: 0.62;
+  --s1: 1;
+}
+
+.byos_win {
+  position: relative;
+  display: grid;
+  grid-template-columns: 3.25rem 1fr;
+  /*
+   * The one design size everything else is drawn against, in PIXELS on purpose.
+   *
+   * This was written in rem first, which was wrong twice over: this site scales rem (1rem is about
+   * 13.3px, not 16), so the box came out 750px while showcase.ts was computing scales against a
+   * different number entirely. A fixed design canvas wants absolute units, and it has to be the same
+   * number in both files.
+   *
+   * The size is also the type size. Because the window is scaled to fill the viewport, a smaller
+   * canvas means a larger multiplier and bigger text: at 900px wide it reached the screen at 1.6x and
+   * read as oversized. 1280 lands at about 1.13x on a 1440 screen, which is close to drawn size.
+   */
+  width: 1280px;
+  height: 800px;
+  overflow: hidden;
+  background: var(--paper);
+  /*
+   * --radius-2xl, held constant on screen.
+   *
+   * Divided by the scale, so it renders as a 16px corner at every size rather than a 16px corner
+   * multiplied by however far the window has grown. It no longer flattens to square at the end
+   * either: the window stops short of the edges, so it stays a rounded card the whole way.
+   */
+  border-radius: calc(16px / var(--s));
+  font-family: var(--sans);
+  /* The window has to lift off a near-black page, which a border alone will not do. Kept at full
+   * strength throughout, since there is always page around it to cast onto. */
+  box-shadow: 0 1.5rem 4rem rgba(0, 0, 0, 0.55);
+}
+
+/* --- the icon rail --- */
+
+.byos_rail {
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  border-right: 1px solid var(--line);
+  background: var(--fog);
+}
+
+.byos_mark {
+  display: grid;
+  place-items: center;
+  width: 1.625rem;
+  height: 1.625rem;
+  border-radius: 8px;
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--serif);
+  font-size: 0.8125rem;
+}
+
+.byos_new {
+  display: grid;
+  place-items: center;
+  width: 1.625rem;
+  height: 1.625rem;
+  margin-bottom: 0.25rem;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  color: var(--ink);
+  font-size: 0.875rem;
+  line-height: 1;
+}
+
+/*
+ * Five different silhouettes, from one element each.
+ *
+ * Identical squares read as a column of checkboxes rather than as a navigation rail, which is what
+ * the first pass looked like. Drive, starred, links, duplicates, agent: a rounded rect, a rotated
+ * square, a ring, an offset pair, a small diamond.
+ */
+.byos_ico {
+  width: 0.875rem;
+  height: 0.875rem;
+  border: 1.5px solid var(--smoke);
+  border-radius: 3px;
+}
+
+.byos_ico:nth-of-type(2) { border-radius: 2px; transform: rotate(45deg) scale(0.8); }
+.byos_ico:nth-of-type(3) { border-radius: 50%; }
+.byos_ico:nth-of-type(4) { box-shadow: 0.1875rem -0.1875rem 0 -0.0625rem var(--paper), 0.25rem -0.25rem 0 -0.0625rem var(--smoke); }
+.byos_ico:nth-of-type(5) { border-radius: 1px; transform: rotate(45deg) scale(0.62); }
+
+.byos_ico.is-on {
+  border-color: var(--ink);
+  background: var(--mist);
+}
+
+/* --- the header --- */
+
+.byos_main {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto auto 1fr;
+  min-width: 0;
+}
+
+.byos_top {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 0.625rem 0.875rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.byos_search {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: min(20rem, 58%);
+  padding: 0.4375rem 0.75rem;
+  border-radius: 999px;
+  background: var(--mist);
+  color: var(--smoke);
+  font-size: 0.6875rem;
+}
+
+.byos_kbd {
+  margin-left: auto;
+  font-size: 0.5625rem;
+  color: var(--ash);
+}
+
+.byos_avatar {
+  display: grid;
+  place-items: center;
+  width: 1.375rem;
+  height: 1.375rem;
+  margin-left: auto;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 0.5625rem;
+}
+
+.byos_head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.875rem 1rem 0.5rem;
+}
+
+/* Signifier at regular weight is the system's signature; a serif at 400 is the closest honest stand-in. */
+.byos_h1 {
+  font-family: var(--serif);
+  font-size: 1.375rem;
+  font-weight: 400;
+  color: var(--ink);
+}
+
+.byos_seg {
+  display: flex;
+  gap: 0.125rem;
+  padding: 0.125rem;
+  border-radius: 999px;
+  background: var(--mist);
+  font-size: 0.5625rem;
+  color: var(--slate);
+}
+
+.byos_seg > span { padding: 0.1875rem 0.5rem; border-radius: 999px; }
+.byos_seg > .is-on { background: var(--paper); color: var(--ink); }
+
+/* --- the file list --- */
+
+.byos_rows { padding: 0 1rem; }
+
+.byos_row {
+  display: grid;
+  grid-template-columns: 0.75rem 0.75rem 1fr auto auto 0.5rem;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4375rem 0.375rem;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.6875rem;
+  color: var(--ink);
+}
+
+/*
+ * A page with its corner turned down. Without the fold it is a rounded square, which at this size is
+ * indistinguishable from the checkbox that sits in the same column of the real app.
+ */
+.byos_doc {
+  width: 0.5625rem;
+  height: 0.75rem;
+  border: 1px solid var(--smoke);
+  border-radius: 1px;
+  clip-path: polygon(0 0, 68% 0, 100% 22%, 100% 100%, 0 100%);
+}
+
+.byos_name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.byos_when, .byos_size { color: var(--ash); font-size: 0.625rem; font-variant-numeric: tabular-nums; }
+.byos_when { width: 3rem; }
+.byos_size { width: 3.25rem; text-align: right; }
+
+.byos_kebab {
+  width: 2px;
+  height: 0.625rem;
+  border-radius: 1px;
+  /* Three dots from one element: cheaper than three, and it is 2px wide. */
+  background: repeating-linear-gradient(var(--smoke) 0 2px, transparent 2px 4px);
+}
+
+/* --- the agent --- */
+
+/* A folder row the agent creates, so it starts with no height at all. */
+.byos_row__new {
+  overflow: hidden;
+  height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  border-bottom-color: transparent;
+  opacity: 0;
+}
+
+.byos_folder {
+  width: 0.75rem;
+  height: 0.625rem;
+  border: 1px solid var(--sienna);
+  border-radius: 1px 3px 3px 3px;
+  background: var(--peach);
+}
+
+/* A link, for an alias row: two interlocking rounded stadiums at this size read as a chain. */
+.byos_alias {
+  width: 0.75rem;
+  height: 0.5rem;
+  border: 1px solid var(--sienna);
+  border-radius: 999px;
+  background: var(--peach);
+}
+
+/* The glyph is always in the markup; it only earns its colour once set_favorite has run. */
+.byos_star { color: transparent; font-size: 0.625rem; }
+.byos_star.is-on { color: var(--sienna); }
+
+/* A tag the agent adds. Sits in the name cell, so it arrives beside the file it describes. */
+.byos_name { display: flex; align-items: baseline; gap: 0.375rem; }
+
+.byos_tag {
+  flex: none;
+  padding: 0.0625rem 0.3125rem;
+  border-radius: 999px;
+  background: var(--peach);
+  color: var(--sienna);
+  font-size: 0.5rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Two names in one cell, so a rename is a crossfade in place rather than a reflow. */
+.byos_name { position: relative; overflow: hidden; }
+.byos_nm { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.byos_nm__new { position: absolute; inset: 0; opacity: 0; }
+
+/*
+ * The agent sits over the list rather than in it, so the plan can arrive and leave without the rows
+ * reflowing underneath it.
+ */
+.byos_agent {
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  bottom: 1rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.byos_plan {
+  display: grid;
+  gap: 0.3125rem;
+  /* The steps live in their own element so the module can replace them per turn. */
+  grid-auto-rows: min-content;
+  padding: 0.75rem 0.875rem;
+  border: 1px solid var(--line);
+  /* --radius-xl */
+  border-radius: 12px;
+  background: var(--paper);
+  box-shadow: 0 0.5rem 1.5rem rgba(23, 25, 28, 0.09);
+  opacity: 0;
+}
+
+.byos_plan_t {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.5625rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ash);
+}
+
+.byos_plan_t em { font-style: normal; color: var(--smoke); }
+
+/* The steps wrapper is transparent to layout, so each step still lines up with the plan's grid. */
+.js-byos-steps { display: grid; gap: 0.3125rem; }
+
+.byos_step {
+  display: grid;
+  grid-template-columns: 0.4375rem 6.75rem 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.6875rem;
+  color: var(--ink);
+}
+
+/* The status pip. Hollow while queued, filled once the step has actually run. */
+.byos_st {
+  width: 0.4375rem;
+  height: 0.4375rem;
+  border: 1px solid var(--smoke);
+  border-radius: 50%;
+}
+
+.byos_st.is-done { border-color: var(--ink); background: var(--ink); }
+
+/* The real tool names from the agent's own tool table, so it reads as the API it is. */
+.byos_step em {
+  font-style: normal;
+  font-size: 0.5625rem;
+  letter-spacing: 0.02em;
+  color: var(--slate);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.byos_step_w { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.byos_step_g {
+  font-size: 0.5rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--smoke);
+  opacity: 0;
+}
+
+.byos_plan_n {
+  padding-top: 0.375rem;
+  border-top: 1px solid var(--line);
+  font-size: 0.5rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--slate);
+  opacity: 0;
+}
+
+.byos_ask {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4375rem 0.4375rem 0.4375rem 0.875rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--paper);
+  box-shadow: 0 0.5rem 1.5rem rgba(23, 25, 28, 0.07);
+}
+
+.byos_ask_p {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+  font-size: 0.6875rem;
+  color: var(--ink);
+}
+
+.byos_caret {
+  width: 1px;
+  height: 0.75rem;
+  margin-left: 1px;
+  background: var(--ink);
+}
+
+.byos_chip {
+  flex: none;
+  padding: 0.1875rem 0.5rem;
+  border: 1px solid var(--peach);
+  border-radius: 999px;
+  background: var(--peach);
+  font-size: 0.5625rem;
+  color: var(--sienna);
+}
+
+.byos_send { flex: none; width: 1.375rem; height: 1.375rem; border-radius: 50%; background: var(--mist); }
+
+/*
+ * Caption below the band, in flow.
+ *
+ * Overlaid on the panel it landed on top of the fixed socials rail, and the reference puts nothing at
+ * all over its reel. In flow it is also identical in both layers, which is what keeps the two in
+ * register through this section.
+ */
+/*
+ * The panel-wide link. Sits above the interface so a click anywhere on the band opens the app, which
+ * is how the reference's reel behaves.
+ */
+.videoPlayer_link {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+}
+
+/*
+ * The spotlight's label, riding the disc.
+ *
+ * The reference's "PLAY REEL" is part of the cursor, not a fixed mark on the reel, so this tracks the
+ * pointer too. It does that with no per-frame JavaScript, by reading the same two custom properties
+ * the masker already writes on the red layer every frame - which also means it is eased by exactly
+ * the same amount as the disc and can never lag behind it.
+ *
+ * The two properties are in different coordinate spaces: `--x` is viewport-relative, `--y` is
+ * document-relative, because the red layer sits in document flow and the mask needs it that way. So
+ * `--y` has to be converted, which is why this is a child of the SECTION rather than of the sticky
+ * window inside it: a sticky element's document offset changes as you scroll and cannot be subtracted
+ * in CSS, while the section's does not change at all. showcase.ts measures it once into `--sec-top`.
+ *
+ * `overflow: clip` on the section then does the rest: move the pointer off the panel and the label is
+ * simply outside the box, with nothing to hide it explicitly.
+ */
+.videoPlayer_cta {
+  position: absolute;
+  left: var(--x, 50%);
+  top: calc(var(--y, 50%) - var(--sec-top, 0px));
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  font-family: Jost, 'Nunito Sans', sans-serif;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1.4;
+  letter-spacing: 0.14em;
+  text-align: center;
+  text-transform: uppercase;
+  color: var(--c-bg);
+}
+
+/* The dark layer has the interface instead, so its copy of the label must not show through it. */
+.layer__dark .videoPlayer_cta { display: none; }
+
+@media (max-width: 767px) {
+  /*
+   * Phones get a phone-shaped canvas. Scaling a 900px-wide desktop interface down to fit 375px would
+   * put its type at 40% and make it unreadable, so the narrow breakpoint is drawn at its own size and
+   * scaled up from there like every other screen.
+   */
+  .byos_win { width: 420px; height: 640px; grid-template-columns: 2.25rem 1fr; }
+  /* At phone width the columns that carry the least stop earning their space. */
+  .byos_row { grid-template-columns: 0.75rem 0.75rem 1fr auto; }
+  .byos_when, .byos_kebab { display: none; }
+  .byos_h1 { font-size: 1.125rem; }
+  /* The tool name and the gate label are the first things to go when there is no room. */
+  .byos_step { grid-template-columns: 0.4375rem 1fr auto; }
+  .byos_step em { display: none; }
+}
+
+/* ---------- achievements ---------- */
+
+.testimonials {
+  --item-size: 3.125rem;
+  --arrow-size: 0.3125rem;
+  --space-size: 0.625rem;
+  --spacing-top: 9.375rem;
+
+  position: relative;
+  padding-top: 9.375rem;
+}
+
+/* Hidden on narrow screens: at phone width there is no room beside the quote for a rail. */
+.testimonials_thumbs_col {
+  display: none;
+}
+
+/*
+ * Sticks in the middle of the viewport while the items scroll past it, so the active badge is
+ * always where the eye already is. The offset is half the viewport minus half the rail's own
+ * height, which is what centres it rather than pinning it to the top.
+ */
+.testimonials_thumbs {
+  position: sticky;
+  top: calc(50vh - 7rem);
+}
+
+.testimonials_thumbs_list {
+  position: relative;
+  width: 100%;
+}
+
+.testimonials_thumbs_inner { position: relative; }
+
+.thumb-item {
+  position: relative;
+  padding-top: var(--space-size);
+  padding-bottom: var(--space-size);
+}
+
+.thumb-item_inner {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--item-size);
+  height: var(--item-size);
+  margin-left: 0.9375rem;
+  border: 1px solid var(--c-hairline);
+  border-radius: 50%;
+  overflow: hidden;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  /* Inactive badges drop right back: the reference lets them go almost to black so the live one
+   * is unmistakable. */
+  opacity: 0.22;
+  transition: opacity 0.4s var(--ease-out), border-color 0.4s var(--ease-out),
+    background 0.4s var(--ease-out);
+}
+
+.thumb-item.is-active .thumb-item_inner {
+  opacity: 1;
+  border-color: var(--c-text);
+  background: hsla(37, 18%, 66%, 0.08);
+}
+
+/* A small red arrow marking the live item. */
+.testimonials_thumbs_flash {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 0;
+  border-top: var(--arrow-size) solid transparent;
+  border-bottom: var(--arrow-size) solid transparent;
+  border-right: var(--arrow-size) solid var(--c-red);
+}
+
+.testimonial {
+  display: flex;
+  align-items: center;
+  height: 42.5rem;
+  border-top: 1px solid var(--c-hairline);
+}
+
+.testimonial_inner { display: inline-block; }
+
+.testimonial_content {
+  position: relative;
+  margin-bottom: 1.875rem;
+}
+
+@media (min-width: 768px) {
+  .testimonials {
+    --item-size: 5.9375rem;
+    --arrow-size: 0.625rem;
+    --spacing-top: 14.880952381vh;
+    padding-top: 19.8412698413vh;
+  }
+  .testimonials_thumbs_col { display: block; }
+  .thumb-item_inner {
+    margin-left: 1.75rem;
+    font-size: 0.875rem;
+  }
+  .testimonial {
+    display: block;
+    align-items: unset;
+    height: unset;
+    padding-top: var(--spacing-top);
+    padding-bottom: var(--spacing-top);
+  }
+  .testimonial_content { margin-bottom: 3.125rem; }
+}
+
+/* ---------- motto ---------- */
+
+.motto {
+  position: relative;
+  overflow: hidden;
+  border-top: 1px solid transparent;
+  border-bottom: 1px solid transparent;
+  /*
+   * MARGIN, not padding. The band covers the whole section including its padding, so padding here
+   * would make the photograph taller rather than making room above it. The margin is page
+   * background, which is what puts air between the achievements thumb rail - whose bottom circle
+   * was landing within 10px of the band - and the photograph's top edge.
+   */
+  margin-top: 3.75rem;
+}
+
+.motto_bg {
+  position: absolute;
+  inset: 0;
+}
+
+.motto_content {
+  position: relative;
+  width: 100%;
+  z-index: 2;
+}
+
+.motto_content_inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /*
+   * The motto band is deliberately the shortest on the page. It carries three short centred lines
+   * rather than a four-line statement, so a full viewport of photograph behind it was more image
+   * than the type could anchor.
+   *
+   * The height is also the zoom control. A cover fit is aspect-locked, so a shorter band is a
+   * wider band, and a wider band crops less: at 52vh the beach frame is in view edge to edge and
+   * the rider renders about a fifth smaller than at 68vh. That is as far out as it goes without
+   * letterboxing, because the source has only 3% of sky above his hair.
+   */
+  height: calc(var(--vh) * 52);
+}
+
+/* The heading is allowed to overhang the column so the type can be set large. */
+.motto_content_heading {
+  width: 120%;
+  margin-left: -10%;
+  padding-top: 1.25rem;
+  padding-bottom: 2.1875rem;
+}
+
+.motto__red {
+  border-top: 1px solid var(--c-bg);
+  border-bottom: 1px solid var(--c-bg);
+}
+
+@media (min-width: 768px) {
+  /*
+   * The band is the whole section, so its height is this padding plus the inner block - and the
+   * padding was almost half of it. Cutting 18.55vh to 8vh takes the band from 741px to ~546px at a
+   * 900px viewport and, because a cover fit is aspect-locked, renders the subject about a fifth
+   * smaller.
+   *
+   * The inner block stays at 30rem. Note this site scales `rem`, so that is ~402px rather than
+   * 480px, and the three headline lines plus the attribution need ~390px of it: shrinking this
+   * instead of the padding overflows the type.
+   */
+  .motto {
+    margin-top: 9vh;
+    padding-top: 8vh;
+    padding-bottom: 8vh;
+  }
+  .motto_content_inner { height: 30rem; }
+  .motto_content_heading { padding-top: 2.1875rem; }
+}
+
+@media (min-width: 1200px) {
+  /* Transparent, not `none`: removing the border would make the red layer 2px shorter than
+   * the dark one and put the whole page below it out of register. */
+  .motto__red {
+    border-top-color: transparent;
+    border-bottom-color: transparent;
+  }
+}
+
+/* ---------- contact ---------- */
+
+.contact {
+  padding-top: 6.25rem;
+  padding-bottom: 9.6875rem;
+}
+
+.contact_label {
+  display: block;
+  margin-bottom: 1.875rem;
+}
+
+.contact_content { margin-top: 6.25rem; }
+
+.contact_link {
+  position: relative;
+  display: block;
+  padding-left: 1.5rem;
+}
+
+/*
+ * No vertical padding, and the value set tighter than the global .sub-content leading.
+ *
+ * The distribution above can only stretch this column to match the links: if its natural height
+ * already exceeds theirs it becomes the tallest thing in the row and drives the height instead,
+ * which is what left it overshooting by ~26px. Kept comfortably under so the links always win.
+ */
+.contact_info .heading-mask_el {
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.contact_info .sub-content {
+  display: block;
+  line-height: 140%;
+}
+
+/* The label is a .h4, which picks up the global 1rem heading margin: 32px across the two blocks,
+ * enough on its own to push this column past the links at narrower desktop widths. */
+.contact_info .h4 {
+  margin-bottom: 0.15em;
+}
+
+.contact_info__top { margin-bottom: 1.875rem; }
+
+.contact_info__red { padding-left: 0.625rem; }
+
+@media (min-width: 768px) {
+  .contact {
+    padding-top: 23.3134920635vh;
+    padding-bottom: 12.4007936508vh;
+  }
+  .contact_label { margin-bottom: 3.125rem; }
+  .contact_link {
+    margin-bottom: 0;
+    padding-left: 0.2em;
+  }
+  .contact_info__top { margin-bottom: 1.25rem; }
+}
+
+@media (min-width: 992px) {
+  /*
+   * The email/phone column is distributed to span exactly the height of the link columns beside
+   * it, so the four small lines line up with the three large ones instead of running past them.
+   *
+   * The row is already a flex container with stretch alignment, so this column is the full row
+   * height for free; `space-between` then pins Email to the top edge and Phone to the bottom.
+   * Fixed margins were what made the block overshoot, and they would need re-tuning every time a
+   * link is added or removed.
+   */
+  .contact_content {
+    display: flex;
+    margin-top: 0;
+  }
+
+  .contact_content > .row {
+    flex: 1;
+    flex-direction: column;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+  }
+
+  /* Spacing is the flex distribution's job now. */
+  .contact_info__top {
+    margin-top: 0;
+    margin-bottom: 0;
+  }
+}
+
+/* ---------- hold-to-reveal ring (touch) ---------- */
+
+.btn_clipPath_ringtext {
+  font-size: 7px;
+  letter-spacing: 0.22em;
+  fill: var(--c-text);
+  text-transform: uppercase;
+}
+
+.btn_clipPath_touch { color: var(--c-text); }
+
+.btn-clear {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* ==========================================================================
+ * Layer parity
+ *
+ * The red layer is revealed through a moving hole, so every block has to sit exactly on top of
+ * its twin in the other layer.
+ *
+ * The alignment is achieved by writing the two layers' copy to the same line count (see
+ * src/data/site.mjs) rather than by forcing fixed heights. Fixed heights looked correct to a
+ * measuring tool but clipped more than half of every paragraph: both layers were cropped the
+ * same way, so the drift read as zero while the text was unreadable. `min-height` reserves the
+ * space without ever cropping.
+ *
+ * tools/parity.mjs verifies both properties: zero drift AND no clipped block.
+ * ========================================================================== */
+
+/* Matches the reference's `.scroll-paragraph-parent`: the big display paragraphs are set
+ * tighter than the general .h2 leading. */
+.scroll-paragraph-mask {
+  line-height: 82%;
+}
+
+.about_content_desc,
+.work_content_desc,
+.client_content_desc {
+  min-height: 18rem;
+  max-width: 21.0625rem;
+}
+
+.testimonial_content {
+  min-height: 12rem;
+}
+
+/*
+ * Project blurbs reserve three lines whatever their length, so a short alternate description
+ * cannot make its row shorter than the row it has to align with.
+ *
+ * Deliberately NOT line-clamped. The row band is already ~6 lines tall at this size, so a long
+ * description has room; clamping it to three truncated the longest one mid-sentence with an
+ * ellipsis. Layer parity comes from the band's min-height, not from capping the text.
+ */
+.project_blurb {
+  min-height: 3.9rem;
+}
+
+@media (min-width: 576px) {
+  .about_content_desc,
+  .work_content_desc,
+  .client_content_desc {
+    min-height: 15rem;
+    max-width: unset;
+  }
+}
+
+@media (min-width: 768px) {
+  .about_ido .heading-mask_el,
+  .client .heading-mask_el {
+    min-height: 4.4rem;
+  }
+
+  .about_ido .h1,
+  .client .h1 {
+    font-size: 4.4rem;
+  }
+
+  .testimonial_content {
+    min-height: 13.5rem;
+  }
+}
+
+@media (min-width: 1200px) {
+  .about_content_desc,
+  .work_content_desc,
+  .client_content_desc {
+    min-height: 16rem;
+  }
+
+  .about_ido .heading-mask_el {
+    min-height: 5.6rem;
+  }
+
+  .about_ido .h1 {
+    font-size: 5.6rem;
+  }
+
+  /* The project names carry this section, so they are set to fill the column. Sized against the
+   * REVEALED copy's narrower column (it shares the row with a description), which is the tighter
+   * of the two constraints. */
+  /* Tall enough to contain the longest description (5 lines plus the stack line) so BOTH layers
+   * are pinned by this floor rather than one being content-driven: that 1px difference is enough
+   * to put the mask reveal out of register. */
+  .client .heading-mask_el {
+    min-height: 8.75rem;
+  }
+
+  .client .h1 {
+    font-size: 8rem;
+  }
+}
+
+/* Contact link rows are a uniform list, so the band height is fixed rather than derived from
+ * whichever label happens to be longest. Without this the rows step unevenly down the column. */
+/*
+ * Contact links are stacked tight: the row height is just the line box of the display size, with
+ * no vertical padding and no gap above the mobile breakpoint. They previously carried a
+ * 4.75rem min-height per row, which spread the list down the page.
+ */
+.contact .social-link {
+  margin-bottom: 0.375rem;
+  margin-left: 0.5em;
+}
+
+/* No rules between them; the hover band is the only structure the list needs. */
+.contact .heading-mask {
+  border: 0;
+}
+
+.contact_link {
+  position: relative;
+  padding-left: 1.5rem;
+  white-space: nowrap;
+}
+
+/*
+ * The red marker. Drawn with clip-path rather than fetched as an icon: it is four points, and
+ * the shape has to recolour with the band, which an external asset cannot do.
+ * Geometry matches the reference's glyph: a square with the bottom-left corner pushed to centre.
+ */
+.contact_link::before {
+  content: '';
+  position: absolute;
+  top: 0.3em;
+  left: -0.5em;
+  width: 0.75rem;
+  height: 0.75rem;
+  background: var(--c-red);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 54% 50%);
+}
+
+/* Inside the opened band the ground is red, so the marker inverts to the dark ink. */
+.heading-mask_el__masking .contact_link::before {
+  background: var(--c-bg);
+}
+
+@media (min-width: 768px) {
+  /* Flush against each other at desktop, as in the reference. */
+  .contact .social-link {
+    margin-bottom: 0;
+  }
+
+  .contact_link {
+    padding-left: 0.2em;
+  }
+}
+
+/* ---------- narrow viewports ----------
+ * The display face is set `nowrap` (the line breaks are authored), so at 375px the longest
+ * word decides the size. The reference gets away with 5rem because its words are short
+ * ("MAKING", "3D"); "SHIPPING" and "ENVIRONMENTS" do not fit at that size and would run off
+ * the right edge. */
+@media (max-width: 575.98px) {
+  .hero h1 {
+    font-size: 3.9rem;
+  }
+
+  .about_ido .h1,
+  .client .h1 {
+    font-size: 2.4rem;
+  }
+
+  .motto_content_heading {
+    font-size: 3.4rem;
+  }
+}

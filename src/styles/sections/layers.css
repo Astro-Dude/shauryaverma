@@ -1,0 +1,136 @@
+/*
+ * The two-layer architecture.
+ *
+ * The page exists twice. `.layer__dark` is the real site. `.layer__red` is a complete
+ * duplicate — same markup, same geometry, alternate copy — sitting directly on top of it and
+ * revealed only through a circular mask that tracks the cursor. Because both layers are
+ * generated from the same data (see src/templates/), their geometry cannot drift, which is
+ * what keeps the reveal aligned.
+ *
+ * The mask is driven by three custom properties written from JS on every frame:
+ *   --x, --y  pointer position, in *document* space (the layer is absolutely positioned,
+ *             so the vertical value has the scroll offset folded in)
+ *   --size    diameter, GSAP-tweened between named stops (40 / 450 / 300 / 0)
+ */
+
+.main-layer {
+  position: relative;
+  /*
+   * Clip, not hide. This element wraps both layers and exists to stop the red layer and any
+   * over-wide heading from causing horizontal scroll, but `overflow: hidden` makes it a scroll
+   * container, and any scroll container between a sticky element and the viewport stops it
+   * sticking. The achievements rail needs to stick through this.
+   */
+  overflow-x: clip;
+  overflow-y: visible;
+}
+
+.layer {
+  width: 100%;
+}
+
+.layer__dark {
+  position: relative;
+  z-index: 1;
+}
+
+.layer__red {
+  --size: 0px;
+  --x: 50%;
+  --y: 50%;
+
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  background: var(--c-red);
+  color: var(--c-bg);
+
+  /* Clicks belong to the real layer underneath. */
+  pointer-events: none;
+
+  /* `closest-side` is load-bearing: the default extent is `farthest-corner`, which for a
+   * square box puts the colour stop out at the half-diagonal (~1.41x the half-width) — the
+   * opaque stop then covers every corner and the "circle" renders as a hard square.
+   * Sizing to the closest side makes the radius exactly half the box, i.e. a real circle. */
+  -webkit-mask-image: radial-gradient(circle closest-side, #000 99%, transparent 100%);
+  mask-image: radial-gradient(circle closest-side, #000 99%, transparent 100%);
+  -webkit-mask-size: var(--size) var(--size);
+  mask-size: var(--size) var(--size);
+  -webkit-mask-position: calc(var(--x) - var(--size) / 2) calc(var(--y) - var(--size) / 2);
+  mask-position: calc(var(--x) - var(--size) / 2) calc(var(--y) - var(--size) / 2);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+
+  will-change: mask-position, mask-size;
+}
+
+/* Inside the red layer the palette inverts: dark ink on red ground. */
+.layer__red,
+.layer__red * {
+  border-color: var(--c-bg) !important;
+}
+
+/*
+ * Touch devices have no pointer to follow, so the reference swaps in a fixed ring button
+ * that expands the mask while held. Hidden on anything with hover.
+ */
+.btn_clipPath {
+  --duration: 10s;
+
+  position: fixed;
+  bottom: 2.1875rem;
+  left: calc(50% - var(--size-btn) / 2);
+  z-index: 4;
+  display: none;
+  padding: 0;
+  background: none;
+  border: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.btn_clipPath_inner {
+  position: relative;
+  display: block;
+  width: var(--size-btn);
+  height: var(--size-btn);
+}
+
+.btn_clipPath_ring {
+  width: var(--size-btn);
+  height: var(--size-btn);
+  animation: loopRing var(--duration) infinite linear forwards;
+}
+
+.btn_clipPath_touch {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@keyframes loopRing {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+html.is-touch .btn_clipPath {
+  display: block;
+}
+
+@media (min-width: 768px) {
+  .btn_clipPath {
+    bottom: 3rem;
+  }
+}
+
+/* The whole effect is pointer-driven; without motion there is nothing to reveal. */
+@media (prefers-reduced-motion: reduce) {
+  .layer__red,
+  .btn_clipPath {
+    display: none;
+  }
+}

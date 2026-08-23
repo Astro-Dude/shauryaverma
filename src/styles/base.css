@@ -1,0 +1,313 @@
+/*
+ * Reset, typography and utilities.
+ *
+ * Type sizes/tracking/leading are the reference's own declared values. The display face is
+ * Jost rather than ITC Avant Garde Gothic (licensed, and not ours to redistribute) — same
+ * geometric, wide-round character at display sizes.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-family: Jost, 'Nunito Sans', sans-serif;
+  font-weight: 400;
+  line-height: 110%;
+  /* The page is scrolled by Lenis; native smooth scrolling would fight it. */
+  scroll-behavior: unset !important;
+  overscroll-behavior-y: none;
+}
+
+body {
+  margin: 0;
+  background: var(--c-bg);
+  color: var(--c-text);
+  /* Scrollbar hidden to match the reference — Lenis owns the scroll affordance. */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+body::-webkit-scrollbar {
+  display: none;
+}
+
+img,
+picture,
+video,
+canvas,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+p {
+  margin: 0 0 1rem;
+}
+
+/* ---------- Type scale ---------- */
+
+h1,
+h2,
+h3,
+h4,
+h6,
+.h1,
+.h2,
+.h3,
+.h4,
+.h6,
+.body-text {
+  font-weight: 700;
+  margin: 0 0 1rem;
+}
+
+b,
+strong {
+  font-weight: 700;
+}
+
+.h1,
+h1 {
+  font-size: 5rem;
+  letter-spacing: -0.05em;
+  line-height: 84%;
+  text-transform: uppercase;
+}
+
+.h2,
+h2 {
+  font-size: 2.75rem;
+  letter-spacing: -0.04em;
+  line-height: 100%;
+}
+
+.h3,
+h3 {
+  font-size: 1.5rem;
+  letter-spacing: -0.04em;
+  line-height: 110%;
+}
+
+.h4,
+h4 {
+  font-size: 0.875rem;
+  letter-spacing: 0.03em;
+  line-height: 120%;
+}
+
+.h6,
+h6 {
+  font-size: 0.875rem;
+  letter-spacing: 0.5em;
+  line-height: 130%;
+  text-transform: uppercase;
+}
+
+.desc {
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 130%;
+}
+
+.body-text,
+.sub-content {
+  font-size: 0.875rem;
+  line-height: 180%;
+}
+
+.body-text {
+  letter-spacing: 0.5em;
+}
+
+.sub-content {
+  font-weight: 400;
+}
+
+@media (min-width: 768px) {
+  .h1,
+  h1 {
+    font-size: 6.875rem;
+  }
+
+  .h2,
+  h2 {
+    font-size: 3.75rem;
+  }
+
+  .h3,
+  h3 {
+    font-size: 1.875rem;
+    letter-spacing: -0.03em;
+    line-height: 100%;
+  }
+
+  .h4,
+  h4 {
+    letter-spacing: 0;
+    line-height: 130%;
+  }
+}
+
+@media (min-width: 1200px) {
+  .h1,
+  h1 {
+    font-size: 8.75rem;
+  }
+
+  .h2,
+  h2 {
+    font-size: 5rem;
+  }
+
+  .h3,
+  h3 {
+    font-size: 2.5rem;
+  }
+
+  .h4,
+  h4 {
+    font-size: 1rem;
+  }
+
+  .h6,
+  h6 {
+    font-size: 1rem;
+  }
+
+  .desc {
+    font-size: 1rem;
+  }
+}
+
+/*
+ * The `hidden` attribute must win.
+ *
+ * It works by way of a UA `display: none`, which ANY author display rule outranks. The loader's
+ * Start button sets `display: flex`, so it stayed on screen through the whole load despite being
+ * marked hidden.
+ */
+[hidden] {
+  display: none !important;
+}
+
+/* ---------- Pointer and selection ----------
+ *
+ * The whole page reads as one composition rather than a document, so the cursor is limited to
+ * two states and nothing is selectable.
+ *
+ * `cursor: default` on the root is what removes the I-beam: text has no cursor rule of its own,
+ * it inherits `auto`, and `auto` over selectable text resolves to a text cursor. Setting an
+ * explicit value on the root inherits down to everything.
+ */
+
+html {
+  cursor: default;
+}
+
+body {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Anything actually clickable gets the hand. Declared after the root rule so it wins. */
+a,
+button,
+summary,
+label,
+[role='button'],
+[tabindex]:not([tabindex='-1']) {
+  cursor: pointer;
+}
+
+/*
+ * Contact details stay selectable. Everything else on the page is there to be read, but an
+ * address you cannot copy is a dead end, and this is the one place a visitor needs to take
+ * something away with them.
+ */
+.contact_info .sub-content,
+.contact_info a,
+.js-email {
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: text;
+  /* Without this a drag starting on the link drags the link instead of selecting its text, so
+   * the value looks selectable but cannot actually be swept with the mouse. */
+  -webkit-user-drag: none;
+}
+
+.contact_info a[href^='mailto'],
+.contact_info a[href^='tel'] {
+  cursor: pointer;
+}
+
+/* Decorative layers should never intercept a drag or a long-press. */
+canvas,
+svg,
+img,
+.layer__red {
+  -webkit-user-drag: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ---------- Utilities ---------- */
+
+.text-center { text-align: center; }
+.text-uppercase { text-transform: uppercase; }
+.text-dark { color: var(--c-bg) !important; }
+.font-400 { font-weight: 400 !important; }
+.mb-0 { margin-bottom: 0 !important; }
+.mb-1 { margin-bottom: 0.25rem !important; }
+.op-0 { opacity: 0; }
+.w-100 { width: 100%; }
+.h-100 { height: 100%; }
+.overflow-hidden { overflow: hidden; }
+.none-break { white-space: nowrap; }
+.ul__reset { list-style: none; margin: 0; padding: 0; }
+
+/* Screen-reader-only, for the labels the visual design leaves implicit. */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/*
+ * Elements that animate in are held hidden until their module has taken over.
+ *
+ * Without this the page showed every headline and paragraph in full, then hid them again to play
+ * their entry animation, which read as the site loading twice. `.js-ready` is set on <html> only
+ * after the reveal modules have split the text and set their starting states.
+ *
+ * The `:not()` guard is what keeps this safe: if the JS never arrives the class is never added
+ * and everything stays visible, so the content does not depend on the animation running.
+ */
+html:not(.js-ready) .js-anim--chars,
+html:not(.js-ready) .js-anim--lines--sim,
+html:not(.js-ready) .js-scroll-paragraph-mask,
+html:not(.js-ready) .is-animation-loading {
+  opacity: 0;
+}

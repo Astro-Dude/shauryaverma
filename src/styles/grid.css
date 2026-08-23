@@ -1,0 +1,166 @@
+/*
+ * 12-column grid.
+ *
+ * The reference is built on Bootstrap 5 and its markup leans hard on the `col-lg-8
+ * offset-lg-2` rhythm, so the class names are kept identical — but this is generated, not a
+ * 200KB dependency. Breakpoints match Bootstrap's `sm` (576) and `lg` (992) because that is
+ * what the reference's classes mean.
+ *
+ * The full 1-12 range is emitted for every breakpoint on purpose: a partial set fails silently
+ * and strangely, since a missing `col-lg-4` just falls through to whatever narrower rule
+ * happens to match.
+ */
+
+/*
+ * No horizontal padding, deliberately.
+ *
+ * Full-bleed backgrounds (the hero canvas, the banner bands) live inside this container and
+ * have to reach the viewport edges; padding here insets them and leaves visible strips of page
+ * background down both sides. The text indentation comes from the grid offsets
+ * (`offset-lg-2` and friends) instead, which is how the reference does it.
+ *
+ * Horizontal overflow is CLIPPED, not hidden: the rows' negative margins and the motto heading
+ * (deliberately wider than its column) still need containing, but `overflow: hidden` makes this
+ * element a scroll container, and a scroll container between a sticky element and the viewport
+ * stops it sticking. The achievements rail sat 2000px above the fold because of exactly that.
+ * `clip` does the same visual job without establishing one, and `overflow-y: visible` keeps the
+ * vertical axis out of the way entirely.
+ */
+.container {
+  width: 100%;
+  margin: 0 auto;
+  overflow-x: clip;
+  overflow-y: visible;
+}
+
+.row {
+  --gutter: 0.75rem;
+  /* Explicit width matters: several rows are flex items (the hero, the motto), and without it
+   * they size to content and every column percentage resolves against the wrong basis. */
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  margin-inline: calc(var(--gutter) * -1);
+}
+
+.row > * {
+  width: 100%;
+  flex: 0 0 auto;
+  padding-inline: var(--gutter);
+}
+
+.justify-content-center { justify-content: center; }
+.align-items-center { align-items: center; }
+.d-flex { display: flex; }
+
+.col-1 { width: 8.3333333%; }
+.col-2 { width: 16.6666667%; }
+.col-3 { width: 25.0000000%; }
+.col-4 { width: 33.3333333%; }
+.col-5 { width: 41.6666667%; }
+.col-6 { width: 50.0000000%; }
+.col-7 { width: 58.3333333%; }
+.col-8 { width: 66.6666667%; }
+.col-9 { width: 75.0000000%; }
+.col-10 { width: 83.3333333%; }
+.col-11 { width: 91.6666667%; }
+.col-12 { width: 100%; }
+
+.offset-0 { margin-left: 0; }
+.offset-1 { margin-left: 8.3333333%; }
+.offset-2 { margin-left: 16.6666667%; }
+.offset-3 { margin-left: 25.0000000%; }
+.offset-4 { margin-left: 33.3333333%; }
+.offset-5 { margin-left: 41.6666667%; }
+.offset-6 { margin-left: 50.0000000%; }
+.offset-7 { margin-left: 58.3333333%; }
+.offset-8 { margin-left: 66.6666667%; }
+.offset-9 { margin-left: 75.0000000%; }
+.offset-10 { margin-left: 83.3333333%; }
+.offset-11 { margin-left: 91.6666667%; }
+.offset-12 { margin-left: 100%; }
+
+.d-none { display: none; }
+.d-block { display: block; }
+.d-inline-block { display: inline-block; }
+.d-flex { display: flex; }
+
+@media (min-width: 576px) {
+  .col-sm-1 { width: 8.3333333%; }
+  .col-sm-2 { width: 16.6666667%; }
+  .col-sm-3 { width: 25.0000000%; }
+  .col-sm-4 { width: 33.3333333%; }
+  .col-sm-5 { width: 41.6666667%; }
+  .col-sm-6 { width: 50.0000000%; }
+  .col-sm-7 { width: 58.3333333%; }
+  .col-sm-8 { width: 66.6666667%; }
+  .col-sm-9 { width: 75.0000000%; }
+  .col-sm-10 { width: 83.3333333%; }
+  .col-sm-11 { width: 91.6666667%; }
+  .col-sm-12 { width: 100%; }
+
+  .offset-sm-0 { margin-left: 0; }
+  .offset-sm-1 { margin-left: 8.3333333%; }
+  .offset-sm-2 { margin-left: 16.6666667%; }
+  .offset-sm-3 { margin-left: 25.0000000%; }
+  .offset-sm-4 { margin-left: 33.3333333%; }
+  .offset-sm-5 { margin-left: 41.6666667%; }
+  .offset-sm-6 { margin-left: 50.0000000%; }
+  .offset-sm-7 { margin-left: 58.3333333%; }
+  .offset-sm-8 { margin-left: 66.6666667%; }
+  .offset-sm-9 { margin-left: 75.0000000%; }
+  .offset-sm-10 { margin-left: 83.3333333%; }
+  .offset-sm-11 { margin-left: 91.6666667%; }
+  .offset-sm-12 { margin-left: 100%; }
+
+  .d-sm-none { display: none; }
+  .d-sm-block { display: block; }
+  .d-sm-inline-block { display: inline-block; }
+  .d-sm-flex { display: flex; }
+}
+
+@media (min-width: 992px) {
+  .col-lg-1 { width: 8.3333333%; }
+  .col-lg-2 { width: 16.6666667%; }
+  .col-lg-3 { width: 25.0000000%; }
+  .col-lg-4 { width: 33.3333333%; }
+  .col-lg-5 { width: 41.6666667%; }
+  .col-lg-6 { width: 50.0000000%; }
+  .col-lg-7 { width: 58.3333333%; }
+  .col-lg-8 { width: 66.6666667%; }
+  .col-lg-9 { width: 75.0000000%; }
+  .col-lg-10 { width: 83.3333333%; }
+  .col-lg-11 { width: 91.6666667%; }
+  .col-lg-12 { width: 100%; }
+
+  .offset-lg-0 { margin-left: 0; }
+  .offset-lg-1 { margin-left: 8.3333333%; }
+  .offset-lg-2 { margin-left: 16.6666667%; }
+  .offset-lg-3 { margin-left: 25.0000000%; }
+  .offset-lg-4 { margin-left: 33.3333333%; }
+  .offset-lg-5 { margin-left: 41.6666667%; }
+  .offset-lg-6 { margin-left: 50.0000000%; }
+  .offset-lg-7 { margin-left: 58.3333333%; }
+  .offset-lg-8 { margin-left: 66.6666667%; }
+  .offset-lg-9 { margin-left: 75.0000000%; }
+  .offset-lg-10 { margin-left: 83.3333333%; }
+  .offset-lg-11 { margin-left: 91.6666667%; }
+  .offset-lg-12 { margin-left: 100%; }
+
+  .d-lg-none { display: none; }
+  .d-lg-block { display: block; }
+  .d-lg-inline-block { display: inline-block; }
+  .d-lg-flex { display: flex; }
+}
+
+/* The text gutter, applied per block rather than on the container. Above the mobile
+ * breakpoint the grid offsets supply the indentation and this drops to zero. */
+.container_content {
+  padding-inline: 1.25rem;
+}
+
+@media (min-width: 768px) {
+  .container_content {
+    padding-inline: 0;
+  }
+}

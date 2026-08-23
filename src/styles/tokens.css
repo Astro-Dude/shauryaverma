@@ -1,0 +1,87 @@
+/*
+ * Design tokens.
+ *
+ * The values here are measured, not invented: they come from `reference/tokens.json`
+ * (see tools/capture-reference.mjs) plus the reference stylesheet's own declarations.
+ * The root font-size curve is the load-bearing part — everything else is sized in `rem`,
+ * so these three rules define the entire fluid scale.
+ */
+
+:root {
+  /* Palette — sampled from the reference. */
+  --c-bg: #0d0d0d;
+  --c-text: #b7ab98;          /* warm beige */
+  --c-red: #eb5939;           /* the alternate layer */
+  --c-white: #fff;
+  --c-hairline: hsla(37, 18%, 66%, 0.15);
+  --c-dim: 0.2;               /* opacity of the "deep" copy behind every masked reveal */
+
+  /* Fluid horizontal gutter. */
+  --screen-x: 1.25rem;
+  --screen-left: 3rem;
+
+  /* Vertical rhythm. */
+  --break-line: 1.2em;
+  --spacing-supper: 10rem;
+  --spacing-xl: 10rem;
+  --spacing-xlx: 10rem;
+  --spacing-lg: 5rem;
+  --spacing-md: 5rem;
+  --spacing-sm: 3rem;
+  --spacing-sx: 1.5rem;
+
+  --border-size-large: 1px;
+  --size-btn: 78px;           /* the hold-to-reveal ring button on touch */
+
+  /* Motion. The reference leans on exactly two eases; matching them matters more than
+   * matching any single duration. */
+  --ease-out: cubic-bezier(0.165, 0.84, 0.44, 1);
+  --dur-mask-in: 0.6s;
+  --dur-mask-out: 0.4s;
+
+  /* Layout reference viewport (the mobile design was drawn at this size). */
+  --view-x: 375px;
+  --view-y: 682px;
+}
+
+/*
+ * Root font-size: three bands, reproducing the reference exactly.
+ *   375px -> 15.000px    480px -> 16.981px    576px -> 18.792px    640px -> 20.000px
+ *   768px -> 14.000px    900px -> 15.031px    992px -> 15.750px
+ *  1200px -> 11.111px   1440px -> 13.333px   1920px -> 17.778px
+ * The deliberate drop at 768 is how the reference re-tightens the scale for tablet.
+ */
+html {
+  font-size: calc(7.92453px + 1.88679vw);
+}
+
+@media (min-width: 576px) {
+  :root {
+    --screen-x: 2.6666666667vw;
+    --spacing-supper: 16.5625rem;
+  }
+}
+
+@media (min-width: 768px) {
+  html {
+    font-size: calc(8px + 0.78125vw);
+  }
+}
+
+@media (min-width: 1200px) {
+  html {
+    font-size: 0.9259259259vw;
+  }
+
+  :root {
+    --screen-x: 4.0509259259vw;
+    --border-size-large: 2px;
+    --spacing-supper: 29.0625rem;
+    --spacing-xl: 18.75rem;
+    --spacing-xlx: 12.5rem;
+    --spacing-lg: 10rem;
+    --spacing-md: 7.5rem;
+    --spacing-sm: 5rem;
+    --spacing-sx: 2.5rem;
+  }
+}
