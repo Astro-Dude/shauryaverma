@@ -3,6 +3,17 @@
  * reads as a list of platforms until you hover it, then as a list of confessions.
  */
 
+import { projects } from './projects.mjs';
+
+/*
+ * The BYOS row derives its URL from the project entry rather than repeating it.
+ *
+ * It was a second hardcoded copy of the same link, and the two drifted the moment the project rows
+ * started preferring the deployed app: the list still sent people to the repository while the row
+ * above sent them to the app. Reading it from one place is what stops that happening again.
+ */
+const byos = projects.find((p) => p.name === 'BYOS');
+
 /*
  * `redLabel` is kept short on purpose. It is revealed inside a fixed-height row band, and at
  * .h3 in a quarter-width column anything past ~18 characters wraps to a second line, which
@@ -28,14 +39,14 @@ export const socials = [
   {
     label: 'CodeChef',
     redLabel: 'Stuck at 1649',
-    href: 'https://www.codechef.com/users/astro_dude',
+    href: 'https://www.codechef.com/users/astrodude',
     icon: 'codechef',
     inFooter: true,
   },
   {
     label: 'BYOS',
     redLabel: 'In Telegram',
-    href: 'https://github.com/Astro-Dude/BYOS',
+    href: byos?.live ?? byos?.repo ?? 'https://github.com/Astro-Dude/BYOS',
     icon: 'byos',
   },
   {

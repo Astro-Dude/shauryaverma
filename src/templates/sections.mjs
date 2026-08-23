@@ -244,10 +244,23 @@ export function projectList(layer) {
                 <div class="col-lg-10 offset-lg-2 col-sm-11 offset-sm-1 col-12">
                   <div class="simple-masking overflow-hidden">
                     <div class="simple-masking_el js-simple-masking_el">
+                      <!--
+                        The deployed app wins over the source, and a project with neither is plain
+                        text rather than an anchor.
+
+                        Live first because the row name is the thing a visitor clicks to see the
+                        project, and a repository is the answer to a different question; the
+                        showcase link resolves the same way, so the two cannot disagree. Rows with
+                        no deployment fall through to their source.
+
+                        The no-link case used to fall back to href="#", which still reads as a link
+                        to a pointer, a screen reader and the keyboard, and then jumps the page to
+                        the top when activated. Omitting both fields is how a row opts out.
+                      -->
                       <h3 class="h1 mb-0 container_content none-break">${
-                        red
+                        red || !(p.live ?? p.repo)
                           ? esc(p.name)
-                          : `<a href="${esc(p.repo ?? '#')}" target="_blank" rel="noopener noreferrer">${esc(p.name)}</a>`
+                          : `<a href="${esc(p.live ?? p.repo)}" target="_blank" rel="noopener noreferrer">${esc(p.name)}</a>`
                       }</h3>
                     </div>
                   </div>

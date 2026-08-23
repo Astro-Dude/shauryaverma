@@ -40,7 +40,7 @@ export const projects = [
     redDesc: 'I built a tool that steals UI components. This portfolio is the live demo.',
     stack: 'JavaScript, Chrome Extensions',
     date: 'Nov. 2025',
-    repo: 'https://github.com/Astro-Dude',
+    repo: 'https://github.com/Astro-Dude/VibeExtract',
   },
   {
     name: 'Waves',
@@ -51,6 +51,7 @@ export const projects = [
     stack: 'MERN, Socket.io, WebRTC',
     date: 'May 2025',
     repo: 'https://github.com/Astro-Dude',
+    live: 'https://waves-c53a.onrender.com/',
   },
   {
     name: 'Vector',
@@ -61,6 +62,7 @@ export const projects = [
     stack: 'MERN + TS, Supabase',
     date: 'Mar. 2025',
     repo: 'https://github.com/Astro-Dude',
+    live: 'https://vector-ewgs.onrender.com/',
   },
   {
     name: 'Portfolio',
@@ -70,6 +72,5 @@ export const projects = [
     redDesc: 'See project two. The name was not subtle.',
     stack: 'Vite, TypeScript, GSAP, Three.js',
     date: 'Aug. 2026',
-    repo: 'https://github.com/Astro-Dude',
   },
 ];
