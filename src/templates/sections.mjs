@@ -410,9 +410,10 @@ export function achievementList(layer) {
 
   const items = achievements
     .map(
-      (a) => `
+      (a, i) => `
       <div class="${cx('testimonial', !red && 'js-testimonial')}">
         <div class="testimonial_inner container_content ${red ? '' : 'js-cursor-extend'}">
+          <span class="${cx('testimonial_index', red && 'text-dark')}" aria-hidden="true">${String(i + 1).padStart(2, '0')}</span>
           <div class="testimonial_content h2">
             ${scrollParagraph(
               (red ? a.redLines : a.lines).map(esc).join('<br>'),

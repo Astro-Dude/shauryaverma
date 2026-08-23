@@ -25,9 +25,17 @@ export function initAchievements(root: ParentNode = document): void {
       const target = thumbs[index];
       // The flash is positioned against the rail, so measure inside it.
       const railTop = (target.offsetParent as HTMLElement | null)?.offsetTop ?? 0;
+      /*
+       * Position only. The marker is a CSS border triangle, which requires a zero-height box: the
+       * red `border-right` is only a triangle while there is no content box for it to run along.
+       * Animating height to the thumb's own height stretched it into a tapered vertical bar the
+       * full height of the circle, so the rail read as a sliver rather than an arrow.
+       *
+       * Centring is computed here from the two measured heights instead of a fixed CSS offset,
+       * because --arrow-size changes at the 768 breakpoint and a hard-coded half would drift.
+       */
       gsap.to(flash, {
-        y: target.offsetTop - railTop,
-        height: target.offsetHeight,
+        y: target.offsetTop - railTop + (target.offsetHeight - flash.offsetHeight) / 2,
         duration: prefersReducedMotion() ? 0 : 0.45,
         ease: 'power3.out',
       });

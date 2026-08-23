@@ -1366,11 +1366,39 @@
 .testimonial {
   display: flex;
   align-items: center;
-  height: 42.5rem;
+  /*
+   * The item is a fixed box with the content centred, so this height IS the gap above and below.
+   * 42.5rem left roughly 370px of empty space around a 270px block of text.
+   */
+  height: 32rem;
   border-top: 1px solid var(--c-hairline);
 }
 
-.testimonial_inner { display: inline-block; }
+.testimonial_inner {
+  position: relative;
+  display: inline-block;
+}
+
+/*
+ * The index numeral, standing where the reference puts a big red quotation mark.
+ *
+ * A quote glyph is attribution: the reference's items are real people vouching for its author, so
+ * the mark points at a speaker. These are things won, and the same glyph would be crediting a
+ * sentence to nobody. The numeral keeps the red accent in the left margin and says "one of three".
+ *
+ * In flow at phone width, where the single offset column leaves no margin to hang in, and outdented
+ * from 768 up where there is room. No colour of its own on the red layer: `.text-dark` carries
+ * !important, so the utility inverts it there without a second rule.
+ */
+.testimonial_index {
+  display: block;
+  margin-bottom: 0.75rem;
+  color: var(--c-red);
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
 
 .testimonial_content {
   position: relative;
@@ -1381,7 +1409,7 @@
   .testimonials {
     --item-size: 5.9375rem;
     --arrow-size: 0.625rem;
-    --spacing-top: 14.880952381vh;
+    --spacing-top: 7.5vh;
     padding-top: 19.8412698413vh;
   }
   .testimonials_thumbs_col { display: block; }
@@ -1397,6 +1425,13 @@
     padding-bottom: var(--spacing-top);
   }
   .testimonial_content { margin-bottom: 3.125rem; }
+
+  .testimonial_index {
+    position: absolute;
+    top: 0.35rem;
+    left: -3.5rem;
+    margin-bottom: 0;
+  }
 }
 
 /* ---------- motto ---------- */

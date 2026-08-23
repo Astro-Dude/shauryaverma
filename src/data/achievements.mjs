@@ -9,24 +9,24 @@
 /** @type {{lines: string[], redLines: string[], label: string, org: string, badge: string}[]} */
 export const achievements = [
   {
-    lines: ['Top 100', 'at the Meta', 'Hackathon'],
-    redLines: ['Top 100', 'which is to say', 'not top 99'],
+    lines: ['Top 100 at the', 'Meta Hackathon'],
+    redLines: ['Top 100 sounds', 'better than 100th'],
     label: '2026',
     org: 'Meta Hackathon',
     badge: '100',
   },
   {
-    lines: ['3 stars', 'on CodeChef,', 'max 1649'],
-    redLines: ['1649 and', 'very settled', 'in at 1649'],
+    lines: ['CodeChef 3 stars,', 'max rating 1649'],
+    redLines: ['1649, and very', 'settled in at 1649'],
     label: 'Competitive Programming',
     org: 'CodeChef',
     badge: '3★',
   },
   {
-    lines: ['Finalist at', 'Shaastra,', 'IIT Madras'],
-    redLines: ['Finalist, a', 'polite word', 'for lost'],
+    lines: ['Finalist at', 'Shaastra, IIT-M'],
+    redLines: ['Finalist, a polite', 'word for lost'],
     label: 'Programming Contest',
     org: 'IIT Madras',
-    badge: 'F',
+    badge: 'IITM',
   },
 ];
