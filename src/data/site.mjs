@@ -25,25 +25,27 @@ export const site = {
     /*
      * One line per entry; `strong` entries are set in the accent red.
      *
-     * The two layers are stacked and revealed through a moving hole, so a line in `redLines`
-     * has to occupy the same box as the line above it in `lines` — same line count, and as
-     * close to the same width as the language allows. "breaking" is chosen over the more
-     * obvious "debugging" precisely because it is the same eight characters as "shipping",
-     * so the two headlines sit exactly on top of each other. It is also the better joke.
+     * The two layers are stacked and revealed through a moving hole, so a line in `redLines` has to
+     * occupy the same box as the line at the same index in `lines`: same line count, and as close to
+     * the same width as the language allows. This pair needs no compromise at all. "clauding" is the
+     * same eight characters as "building" and every other line is identical bar the year, so the two
+     * headlines register exactly and the reveal changes precisely two things.
+     *
+     * Both are set uppercase by CSS, so the case here is only a file convention.
      */
     lines: [
-      { text: 'shipping' },
+      { text: 'building' },
       { text: 'good', strong: true },
       { text: 'shit', strong: true },
       { text: 'since' },
       { text: '2024' },
     ],
     redLines: [
-      { text: 'breaking' },
-      { text: 'bad', strong: true },
+      { text: 'clauding' },
+      { text: 'good', strong: true },
       { text: 'shit', strong: true },
       { text: 'since' },
-      { text: '2024' },
+      { text: '2025' },
     ],
   },
 
