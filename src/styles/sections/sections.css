@@ -378,9 +378,13 @@
   white-space: nowrap;
 }
 
-/* Accent words are set in red rather than a heavier weight — the whole headline is already
- * at the display weight, so colour is the only axis left to emphasise with. */
+/* Accent words are set in red rather than a heavier weight - the whole headline is already
+ * at the display weight, so colour is the only axis left to emphasise with.
+ *
+ * The About statement is set at the same display size and belongs in this list. It was left out, so
+ * its accent phrase rendered as plain beige and the emphasis did nothing at all. */
 .hero h1 strong,
+.about_content_desc strong,
 .motto_content_heading strong {
   color: var(--c-red);
   font-weight: inherit;
@@ -388,6 +392,7 @@
 
 /* Inside the red layer that inverts: the accent becomes the dark ink. */
 .layer__red .hero h1 strong,
+.layer__red .about_content_desc strong,
 .layer__red .motto_content_heading strong {
   color: var(--c-bg);
 }

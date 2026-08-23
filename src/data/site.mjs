@@ -54,14 +54,24 @@ export const site = {
 
   about: {
     label: 'About me',
-    // `strong` spans get the heavier display weight mid-sentence.
-    // Length-matched to `html` so both layers wrap to the same number of lines.
+    /*
+     * `strong` spans get the accent red in the dark layer and the heavier display weight in the red
+     * one, which is how the reference sets "selectively skilled".
+     *
+     * The two layers share no distinctive phrase. "Selectively skilled" is only ever in the dark
+     * copy and is never explained there; the student, the two degrees and the paycheck are only ever
+     * in the spotlight. A phrase that appears in both is not a reveal, it is just repetition.
+     *
+     * Length-matched by RENDERED LINE COUNT, not by character count. Both sides come to four lines
+     * in the 940px column at this type size; measured, because 90 characters can be three lines and
+     * 102 can be four depending entirely on where the words happen to break.
+     */
     html:
-      "I'm a <strong>full-stack engineer</strong> building the environments frontier models " +
-      'learn from: high-fidelity replicas, RL harnesses, and the pipelines behind them.',
+      "I'm a <strong>selectively skilled</strong> developer with a strong focus on building " +
+      'software that survives real users.',
     redHtml:
-      "I'm a <strong>third-year student</strong> rebuilding other people’s apps until a " +
-      'language model believes them, calling that research, and somehow getting paid for it.',
+      "I'm a <strong>third-year student</strong> with two degrees running. I ship good shit " +
+      'only if the paycheck is equally good.',
   },
 
   experience: {
