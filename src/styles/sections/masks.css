@@ -96,6 +96,30 @@
   position: relative;
 }
 
+/*
+ * The cut.
+ *
+ * A revealed name is allowed to be wider than the column it sits in, and this is what slices it off
+ * at the boundary rather than letting it run across the description. No ellipsis: the reference cuts
+ * mid-letter with a hard vertical edge, which is what makes it read as deliberate.
+ */
+.heading-mask_clip {
+  overflow: hidden;
+}
+
+/*
+ * The revealed copy's name is a `span`, and an inline box takes its height from the font's em box
+ * rather than from `line-height`. At 88px display type that is 127px tall against an 88px band, so
+ * the top of every hovered name was sliced off. Its always-visible twin is an `h3`, which is block
+ * and therefore 74px, which is why only the revealed one broke.
+ *
+ * Blocking it is the whole fix: same width, same type size, box now agrees with the line-height.
+ */
+.simple-masking_el > .h1,
+.simple-masking_el > .h3 {
+  display: block;
+}
+
 .simple-masking_el {
   display: inline-block;
 }

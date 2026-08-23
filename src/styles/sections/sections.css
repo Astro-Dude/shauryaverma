@@ -452,8 +452,11 @@
     margin-bottom: 28.7698412698vh;
   }
   .about_content_desc { max-width: unset; }
-  /* Trimmed from the reference's 28.8vh: with six rows this section has to fit one screen. */
-  .about_ido { padding-bottom: 12vh; }
+  /*
+   * The reference uses 28.8vh here. This was trimmed to 12vh back when the section carried six rows
+   * and had to fit one screen; at five rows there is room to give it back.
+   */
+  .about_ido { padding-bottom: 22vh; }
   .about_ido_coffee { bottom: 0; }
 }
 
@@ -1654,12 +1657,17 @@
     min-height: 16rem;
   }
 
+  /*
+   * Sized against the longest name, which is the real constraint. "RL ENVIRONMENTS" is 665px at
+   * 5.6rem; at 6.6rem it is 784px, inside the 840px the widened col-lg-7 gives it. 6.8rem overflows
+   * and the name wraps, which breaks the uniform band rhythm the whole section depends on.
+   */
   .about_ido .heading-mask_el {
-    min-height: 5.6rem;
+    min-height: 6.6rem;
   }
 
   .about_ido .h1 {
-    font-size: 5.6rem;
+    font-size: 6.6rem;
   }
 
   /* The project names carry this section, so they are set to fill the column. Sized against the

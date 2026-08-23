@@ -61,29 +61,36 @@ export function about(layer) {
       headingMask({
         first: i === 0,
         interactive: !red,
+        /*
+          The two copies get DIFFERENT column widths on purpose, which is how the reference does it.
+          Nothing competes with the name until you hover, so the resting copy is given the full
+          measure and shows in one piece. The revealed copy has to share the row with a description,
+          so its column is narrower and clips: a long name is cut mid-letter at the boundary, exactly
+          where the description starts. That cut is the effect, not a failure of it.
+
+          Both name columns keep `offset-lg-2`, so the left edge is identical and the name does not
+          move as the band opens over it. Only the right-hand boundary changes.
+        */
         deep: `
           <div class="row align-items-center">
-            <div class="col-lg-6 col-sm-8 offset-lg-2 offset-sm-1 col-12">
+            <div class="col-lg-10 col-sm-8 offset-lg-2 offset-sm-1 col-12">
               <div class="simple-masking">
                 <div class="simple-masking_el js-simple-masking_el">
                   <h3 class="h1 mb-0 none-break">${esc(s.name)}</h3>
                 </div>
               </div>
             </div>
-            <div class="col-lg-3 op-0 d-lg-block d-none" aria-hidden="true">
-              <p class="mb-0 desc">${esc(s.desc)}</p>
-            </div>
           </div>`,
         masking: `
           <div class="row align-items-center">
-            <div class="col-lg-6 col-sm-8 offset-lg-2 offset-sm-1 col-12">
+            <div class="col-lg-5 col-sm-8 offset-lg-2 offset-sm-1 col-12 heading-mask_clip">
               <div class="simple-masking">
                 <div class="simple-masking_el">
                   <span class="h1 mb-0 text-dark none-break">${esc(s.name)}</span>
                 </div>
               </div>
             </div>
-            <div class="col-lg-3 col-sm-4 col-12 text-dark d-sm-block d-none">
+            <div class="col-lg-5 col-sm-4 col-12 text-dark d-sm-block d-none">
               <p class="mb-0 desc">${esc(s.desc)}</p>
             </div>
           </div>`,
@@ -167,7 +174,13 @@ export function work(layer) {
 
   return `
     <div class="${cx('work', red && 'work__red')}">
-      <div class="${cx('row', 'work_experience', !red && 'js-cursor-extend')}">
+      <!--
+        No cursor zone on the row itself. The spotlight's extend stop is 375px, which is sized for
+        reading a paragraph through the hole, and this row is a full-width 855px photo band: putting
+        the zone here opened a big red disc over empty photograph where there was nothing to reveal.
+        The work_content block below already carries it, scoped to the text that has a red twin.
+      -->
+      <div class="row work_experience">
         <!--
           Backdrop for the whole row: the eyebrow and headline sit ON it, and it runs down to meet
           the History list, which is what the reference does in this exact slot.

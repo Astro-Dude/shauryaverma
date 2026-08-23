@@ -138,6 +138,11 @@ const clipped = await page.evaluate(() => {
      */
     if (el.classList.contains('byos_row__new')) return;
     /*
+     * A revealed row name is deliberately wider than its column and cut at the boundary, which is
+     * the effect the reference uses. Clipped by design, so not a finding.
+     */
+    if (el.classList.contains('heading-mask_clip')) return;
+    /*
      * The featured panel's window. Clipping its own contents is what a window does, and it is drawn
      * at a fixed design size and scaled, so its box and its content never agree by definition.
      */
