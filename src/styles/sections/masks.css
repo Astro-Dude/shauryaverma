@@ -156,11 +156,23 @@
   opacity: var(--c-dim);
 }
 
+/*
+ * The wipe is horizontal, so the clip must not constrain the vertical.
+ *
+ * `inset()` clips to the border box and cannot take negative values, so a line box that is shorter
+ * than its own glyphs loses their tops. That happens wherever an accent `<strong>` sits mid-sentence:
+ * an inline box takes its height from the font's em box rather than from line-height, so at this
+ * display size it stands 21px taller than the 68px line it lives in, and the clip cut the difference
+ * off every ascender in the line.
+ *
+ * A polygon can extend beyond the border box, which an inset cannot. Same horizontal wipe, no
+ * vertical clipping at all.
+ */
 .js-simple-masking_el > .is-masking {
   --size: 100%;
   position: relative;
   z-index: 2;
-  clip-path: inset(0 var(--size) 0 0);
+  clip-path: polygon(0 -50%, calc(100% - var(--size)) -50%, calc(100% - var(--size)) 150%, 0 150%);
 }
 
 /* ---------- scroll-paragraph-mask: per-line wipe ---------- */
@@ -188,7 +200,9 @@
 }
 
 .scroll-paragraph-mask.is-masking .line {
-  clip-path: inset(0 var(--size) 0 0);
+  /* Polygon, not inset: see the note above. An inset clipped the ascenders off every line with an
+   * accent span in it. */
+  clip-path: polygon(0 -50%, calc(100% - var(--size)) -50%, calc(100% - var(--size)) 150%, 0 150%);
 }
 
 /* ---------- Split-text reveal targets ---------- */

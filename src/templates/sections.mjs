@@ -150,7 +150,7 @@ export function work(layer) {
             <div class="col-lg-6 col-sm-8 col-9">
               <div class="simple-masking_el js-simple-masking_el">
                 <p class="h3 mb-1">${esc(h.role)}</p>
-                <p class="mb-0 desc font-400">${esc(h.org)}</p>
+                <p class="mb-0 desc font-400">${esc(h.org)}, ${esc(h.range)}</p>
               </div>
             </div>
           </div>`,
@@ -164,7 +164,7 @@ export function work(layer) {
             <div class="col-lg-6 col-sm-8 col-9">
               <div class="simple-masking_el">
                 <p class="h3 mb-1 text-dark">${esc(h.redRole)}</p>
-                <p class="mb-0 desc font-400 text-dark">${esc(h.org)}</p>
+                <p class="mb-0 desc font-400 text-dark">${esc(h.org)}, ${esc(h.range)}</p>
               </div>
             </div>
           </div>`,
@@ -189,8 +189,20 @@ export function work(layer) {
           and BAND_TUNING in webgl.ts.
         -->
         <div class="work_bg js-band" aria-hidden="true">
-          <div class="band_media" data-lenis-speed=".08">
-            <canvas class="js-webgl" data-webgl="${red ? 'band-red' : 'band'}" data-photo="/assets/bands/office.jpg"></canvas>
+          <div class="band_media" data-lenis-speed=".25">
+            <!--
+              Same two-part treatment as the hero backdrop, which is what makes the reference's band
+              read as being uncovered rather than sitting there: a parallax so it lags the page, and
+              a scale that scrubs 1.18 down to 1 as the section crosses the screen.
+
+              The scale is what does most of the work, and it needs no room to move in: scaling up
+              crops against the band's own overflow and can never pull an edge into frame. The
+              parallax does need room, which is why it stays modest. The media is 130% tall, so there
+              is about 138px of slack per side and 0.12 spends 110px of it.
+            -->
+            <div class="w-100 h-100 js-anim--scale" data-screen-offset="0.3">
+              <canvas class="js-webgl" data-webgl="${red ? 'band-red' : 'band'}" data-photo="/assets/bands/office.jpg"></canvas>
+            </div>
           </div>
         </div>
         <div class="col-lg-8 col-sm-10 offset-lg-2 offset-sm-1 col-12">

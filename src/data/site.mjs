@@ -76,12 +76,24 @@ export const site = {
 
   experience: {
     label: 'Experience',
+    /*
+     * The dark layer flaunts, the spotlight admits. That is the rule for every red/dark pair on the
+     * page, and this is the clearest case of it: the claim is the reference's own construction, and
+     * the reveal turns the admission into the reason for it rather than an apology for it.
+     *
+     * The previous red copy said the internship "became a job". It has not; it is ongoing.
+     *
+     * "A year" and not "two": the two-year figure is time spent building, which the hero already
+     * claims with "since 2024". This section is about working, and that started in the second year.
+     * "A year" rather than "one year" because the reference's construction is "Over a decade" and the
+     * article reads better after "over".
+     */
     html:
-      'Two years of shipping real software: <strong>production systems</strong> at an AI lab, ' +
-      'and two CS degrees running at the same time.',
+      'Over <strong>a year</strong> of experience shipping software with some of the most ' +
+      'talented people in the business.',
     redHtml:
-      'Two years, five repos, and one internship that <strong>became a job</strong>, plus ' +
-      'two degrees I am still keeping up with.',
+      'I am the <strong>least experienced</strong> person in every room I work in, which is the ' +
+      'entire reason I am in them.',
   },
 
   motto: {

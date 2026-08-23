@@ -381,10 +381,13 @@
 /* Accent words are set in red rather than a heavier weight - the whole headline is already
  * at the display weight, so colour is the only axis left to emphasise with.
  *
- * The About statement is set at the same display size and belongs in this list. It was left out, so
- * its accent phrase rendered as plain beige and the emphasis did nothing at all. */
+ * Every statement set at this display size belongs in this list. About, Experience and Projects were
+ * all missing from it, so their accent phrases rendered as plain beige and the emphasis did nothing
+ * at all. Adding a new one of these means adding it here too. */
 .hero h1 strong,
 .about_content_desc strong,
+.work_content_desc strong,
+.client_content_desc strong,
 .motto_content_heading strong {
   color: var(--c-red);
   font-weight: inherit;
@@ -393,6 +396,8 @@
 /* Inside the red layer that inverts: the accent becomes the dark ink. */
 .layer__red .hero h1 strong,
 .layer__red .about_content_desc strong,
+.layer__red .work_content_desc strong,
+.layer__red .client_content_desc strong,
 .layer__red .motto_content_heading strong {
   color: var(--c-bg);
 }
@@ -538,11 +543,17 @@
   position: absolute;
   left: 0;
   right: 0;
-  top: -15%;
-  height: 130%;
+  /*
+   * 160%, not 130%. The overhang is the parallax's entire travel budget, and 15% a side only paid
+   * for about 90px of movement. 30% a side pays for roughly 265px, which is what lets the reveal run
+   * long enough to read as one.
+   */
+  top: -30%;
+  height: 160%;
 }
 
-.band_media canvas {
+.band_media canvas,
+.band_media .js-anim--scale {
   width: 100%;
   height: 100%;
   display: block;

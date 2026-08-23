@@ -197,15 +197,19 @@ const BAND_FRAG = /* glsl */ `
     span /= uZoom;
 
     /*
-     * Horizontal focus applied only to the extent there IS horizontal slack.
+     * uFocusX is the crop CENTRE, clamped to whatever the photograph can actually supply.
      *
-     * The rider sits at x = 0.42 of the frame, so a centred crop leaves dead field to his right
-     * on any band narrow enough to crop horizontally. Panning to him fixes that - but on a wide
-     * desktop band the full width is already in use, and panning there would sample outside the
-     * texture and smear the clamped edge. Weighting by (1 - span.x) makes the pan fade to nothing
-     * exactly as the slack does.
+     * Named halfSpan rather than half: half is a reserved word in GLSL ES and fails to compile.
+     * A failed compile here is silent to look at - the draw call still runs, the canvas just stays on
+     * its black clear colour - so it presents as a crop or grading bug rather than a syntax error.
+     *
+     * This used to weight the pan by the available slack, which kept a wide band from sampling past
+     * the texture edge but also made the control unusable for deliberate off-centre framing: asking
+     * for a subject on the right silently got you a subject near the middle. Clamping does the same
+     * safety job and says what it means, so a tuning value is simply where the crop is centred.
      */
-    float cx = mix(0.5, uFocusX, clamp(1.0 - span.x, 0.0, 1.0));
+    float halfSpan = span.x * 0.5;
+    float cx = clamp(uFocusX, halfSpan, 1.0 - halfSpan);
     return vec2(cx, uFocusY) + (uv - 0.5) * span;
   }
 
@@ -614,19 +618,26 @@ async function tryPortrait(instance: Instance): Promise<void> {
  * have already been pulled down by the gamma.
  */
 interface BandTuning {
+  /** [x, y] crop centre. y is measured from the TOP of the photograph and inverted at use. */
   focus: [number, number];
   range: [number, number];
   level: number;
   gamma: number;
+  zoom: number;
 }
 
 const BAND_TUNING: Record<string, BandTuning> = {
-  '/assets/bands/office.jpg': { focus: [0.47, 0.45], range: [0.02, 0.92], level: 0.30, gamma: 1.5 },
-  '/assets/bands/beach.jpg': { focus: [0.42, 0.34], range: [0.09, 0.72], level: 0.26, gamma: 1.0 },
+  /*
+   * Office: zoomed and framed left of centre, which puts the subject on the RIGHT of the band and
+   * clear of the headline. The headline ends at 78% of the frame, so the face has to sit beyond that;
+   * at this zoom the crop shows about half the width, which is what makes that reachable at all.
+   */
+  '/assets/bands/office.jpg': { focus: [0.34, 0.46], range: [0.02, 0.92], level: 0.30, gamma: 1.5, zoom: 1.15 },
+  '/assets/bands/beach.jpg': { focus: [0.46, 0.34], range: [0.09, 0.72], level: 0.26, gamma: 1.0, zoom: 1.0 },
 };
 
 /* Deliberately conservative: a photograph nobody has measured gets a safe mid remap, not a guess. */
-const BAND_FALLBACK: BandTuning = { focus: [0.5, 0.45], range: [0.05, 0.88], level: 0.26, gamma: 1.3 };
+const BAND_FALLBACK: BandTuning = { focus: [0.5, 0.45], range: [0.05, 0.88], level: 0.26, gamma: 1.3, zoom: 1.0 };
 
 /**
  * The two ends of the band's duotone ramp, in sRGB, derived from the palette tokens.
@@ -719,7 +730,7 @@ async function tryBand(instance: Instance, tint: 'ink' | 'accent', src: string):
       uFocusY: { value: 1 - tune.focus[1] },
       /* The subject's own position across the frame, used only where there is slack to pan into. */
       uFocusX: { value: tune.focus[0] },
-      uZoom: { value: 1.0 },
+      uZoom: { value: tune.zoom },
       /*
        * At most 66% of the photograph's height is ever shown. Below that the sky above the hair
        * and the horizon below the shirt come into frame; above it the crop starts clipping hair.

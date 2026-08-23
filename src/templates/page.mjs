@@ -161,17 +161,27 @@ ${footer()}
 
 /** `<head>` metadata, kept next to the content it describes. */
 export function renderHead() {
-  const title = `${site.name}, ${site.role}`;
+  /*
+   * The tab shows the name alone. A browser tab is about 20 characters wide before it truncates,
+   * so "Shaurya Verma, Full-Stack & AI Systems Engineer" arrived as "Shaurya Verma, Full-Stac..."
+   * - the role was never legible and the ellipsis read as a broken title. The social cards have
+   * room for the full line, so they keep it.
+   */
+  const title = site.name;
+  const social = `${site.name}, ${site.role}`;
   return `
     <title>${esc(title)}</title>
     <meta name="description" content="${esc(site.description)}">
     <meta property="og:type" content="website">
-    <meta property="og:title" content="${esc(title)}">
+    <meta property="og:title" content="${esc(social)}">
     <meta property="og:description" content="${esc(site.description)}">
     <meta property="og:url" content="${esc(site.url)}">
     <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="${esc(title)}">
+    <meta name="twitter:title" content="${esc(social)}">
     <meta name="twitter:description" content="${esc(site.description)}">
     <meta name="theme-color" content="#0d0d0d">
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+    <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png">
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
     <link rel="canonical" href="${esc(site.url)}">`;
 }
