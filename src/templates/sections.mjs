@@ -278,8 +278,8 @@ export function projectList(layer) {
             <div class="client_content_desc h2">
               ${scrollParagraph(
                 red
-                  ? 'Five repos, one of which is <strong>the page you are on</strong>. Read into that what you like, I still use all of them.'
-                  : 'I build <strong>real systems</strong> end to end: storage, auth, retrieval, agents, and then keep using them myself.',
+                  ? 'Five repos, and I am <strong>the whole user base</strong>. I build them for everyone and then keep using them myself.'
+                  : 'I build <strong>real systems</strong> end to end: storage, auth, retrieval, agents, and every one of them shipped.',
                 { animate: !red },
               )}
             </div>
