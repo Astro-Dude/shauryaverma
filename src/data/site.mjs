@@ -25,13 +25,16 @@ export const site = {
     /*
      * One line per entry; `strong` entries are set in the accent red.
      *
-     * The two layers are stacked and revealed through a moving hole, so a line in `redLines` has to
-     * occupy the same box as the line at the same index in `lines`: same line count, and as close to
-     * the same width as the language allows. This pair needs no compromise at all. "clauding" is the
-     * same eight characters as "building" and every other line is identical bar the year, so the two
-     * headlines register exactly and the reveal changes precisely two things.
+     * CHARACTER COUNT IS NOT WIDTH. Measured in Jost at this size, "good" is 349px and "vibe" is
+     * 248px, both four letters: G, O, O and D are four wide round glyphs and VIBE contains an I.
+     * "building" is 522px against "clauding" at 578px. So matching the copy by counting letters,
+     * which is what this file used to do, guarantees nothing.
      *
-     * Both are set uppercase by CSS, so the case here is only a file convention.
+     * The layers are made to register in code instead. matchLayerWidths() in reveals.ts measures
+     * each line pair after the split and scales the red one horizontally onto the dark one's exact
+     * width, so any two words line up and the copy here is free to say whatever it should say.
+     *
+     * Both layers are set uppercase by CSS, so the case here is only a file convention.
      */
     lines: [
       { text: 'building' },
@@ -42,7 +45,7 @@ export const site = {
     ],
     redLines: [
       { text: 'clauding' },
-      { text: 'good', strong: true },
+      { text: 'vibe', strong: true },
       { text: 'shit', strong: true },
       { text: 'since' },
       { text: '2025' },

@@ -243,11 +243,106 @@ export function initScaleAnimations(root: ParentNode = document): void {
 }
 
 /** Run every reveal. Called once after the loader hands over. */
+/* ---------------------------------------------------------------- layer registration */
+
+/**
+ * Scale each red-layer headline onto the exact width of its dark-layer twin.
+ *
+ * The two layers are stacked and the red one is revealed through a hole that follows the cursor, so
+ * a line only reads as a substitution if it occupies the same box as the line beneath it.
+ *
+ * COUNTING CHARACTERS DOES NOT ACHIEVE THAT, which is what this file's copy used to rely on. In Jost
+ * at hero size "good" is 349px and "vibe" is 248px, both four letters, because G, O, O and D are four
+ * wide round glyphs; "building" is 522px against "clauding" at 578px. Any pair chosen by letter count
+ * is misregistered by tens of pixels, and at the edge of the hole that shows up as two words mangling
+ * each other.
+ *
+ * So the copy is left free to say what it should, and the geometry is corrected here: measure the two
+ * text runs, then scale the red one horizontally onto the dark one. Only the red layer is distorted,
+ * never the dark one, since the dark layer is what people read.
+ *
+ * scaleX on the line block works because the text is centred inside it: scaling the block about its
+ * own centre scales the text's distance from that centre by the same factor, so the run lands on the
+ * target width and stays concentric.
+ */
+/*
+ * The cursor spotlight's diameter over a paragraph block, from extendSize() in masker.ts. A word
+ * narrower than this is revealed whole; a wider one is only ever glimpsed in pieces.
+ */
+const SPOTLIGHT = 375;
+
+export function matchLayerWidths(root: ParentNode = document): void {
+  const pairs: Array<[HTMLElement, HTMLElement]> = [];
+
+  const dark = root.querySelector<HTMLElement>('.layer__dark .hero');
+  const red = root.querySelector<HTMLElement>('.layer__red .hero');
+  if (!dark || !red) return;
+
+  const dl = Array.from(dark.querySelectorAll<HTMLElement>('.split-line'));
+  const rl = Array.from(red.querySelectorAll<HTMLElement>('.split-line'));
+  if (dl.length !== rl.length) return;
+  dl.forEach((d, i) => pairs.push([d, rl[i]]));
+
+  /** Width of the actual glyph run, not of the full-width block that contains it. */
+  const runWidth = (line: HTMLElement): number => {
+    const chars = line.querySelectorAll<HTMLElement>('.split-char');
+    if (!chars.length) return line.getBoundingClientRect().width;
+    const first = chars[0].getBoundingClientRect();
+    const last = chars[chars.length - 1].getBoundingClientRect();
+    return last.right - first.left;
+  };
+
+  const apply = () => {
+    for (const [d, r] of pairs) {
+      /* Cleared before measuring, or the second pass would measure its own correction. */
+      r.style.transform = '';
+      const want = runWidth(d);
+      const have = runWidth(r);
+      if (!want || !have) continue;
+
+      /*
+       * Only correct the lines that need it.
+       *
+       * A word narrower than the spotlight is covered by the disc entirely, so it is read whole and
+       * whether it registers with the word underneath makes no difference. Correcting those anyway
+       * costs real distortion for nothing: "vibe" onto "good" is a 41% horizontal stretch, and it
+       * looked stretched next to the undistorted line below it.
+       *
+       * Wide words are the opposite case. The disc can never cover them, so the boundary always
+       * falls mid-word and the two runs mangle each other unless their boxes agree.
+       */
+      if (want <= SPOTLIGHT && have <= SPOTLIGHT) continue;
+
+      /* Below a pixel or so the correction is not worth the distortion either. */
+      if (Math.abs(want - have) < 1.5) continue;
+
+      /* Clamped, because past about 15% the typeface stops looking like itself. */
+      const k = Math.min(1.15, Math.max(0.85, want / have));
+      r.style.transformOrigin = 'center center';
+      r.style.transform = `scaleX(${k.toFixed(4)})`;
+    }
+  };
+
+  apply();
+
+  /* Line widths move with the fluid type scale, so this has to be redone on resize. */
+  let queued = 0;
+  window.addEventListener('resize', () => {
+    window.clearTimeout(queued);
+    queued = window.setTimeout(apply, 150);
+  }, { passive: true });
+
+  /* And once more after webfonts land, since a fallback face measures differently. */
+  if (document.fonts?.status !== 'loaded') void document.fonts?.ready.then(apply);
+}
+
 export function initReveals(root: ParentNode = document): void {
   initParagraphMasks(root);
   initSimpleMasking(root);
   initCharAnimations(root);
   initLineAnimations(root);
   initScaleAnimations(root);
+  /* After the splits: it measures the glyph runs the split produces. */
+  matchLayerWidths(root);
   ScrollTrigger.refresh();
 }
