@@ -11,10 +11,11 @@
     "verify": "node tools/verify.mjs",
     "parity": "node tools/parity.mjs",
     "sections": "node tools/sections.mjs",
-    "check": "tsc --noEmit && node tools/parity.mjs",
+    "check": "tsc --noEmit && node tools/parity.mjs && node tools/check-vercel.mjs",
     "build:site": "tsc --noEmit && vite build",
     "build:netflix": "npm --prefix netflix ci --no-audit --no-fund && npm --prefix netflix run build && node tools/stage-netflix.mjs",
-    "preview:deploy": "node tools/serve-preview.mjs"
+    "preview:deploy": "node tools/serve-preview.mjs",
+    "check:vercel": "node tools/check-vercel.mjs"
   },
   "devDependencies": {
     "@types/three": "^0.171.0",

@@ -103,7 +103,19 @@ blank page.
 
 `vercel.json` then hands any unmatched path under `/netflix` to the archive's `index.html`, which is
 what a client-side router needs. No exclusion is needed for `/netflix/assets`: Vercel serves static
-files before it applies rewrites.
+files before it applies rewrites, so the real bundles win and only routes fall through. The current
+site at `/` is a single static page and needs no fallback of its own, so an unknown top-level path
+correctly 404s.
+
+That explanation lives here rather than in `vercel.json` because it cannot live there. JSON has no
+comments, and Vercel validates the file with `additionalProperties: false` - a `"//"` key used as a
+comment fails the deploy with `rewrites[0] should NOT have additional property "//"`. Which is
+exactly how this was found out.
+
+`npm run check` validates `vercel.json` against Vercel's published schema, so that class of mistake
+is caught before a push rather than by a failed build. It is not part of `npm run build`, because a
+deploy should not depend on fetching a schema from a third party; offline it reports that it could not
+check and passes.
 
 ### Running it
 
