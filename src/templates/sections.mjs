@@ -255,12 +255,12 @@ export function projectList(layer) {
               </div>`,
             masking: `
               <div class="row align-items-center">
-                <div class="col-lg-6 col-sm-8 offset-lg-2 offset-sm-1 col-12">
+                <div class="col-lg-5 col-sm-8 offset-lg-2 offset-sm-1 col-12">
                   <div class="simple-masking"><div class="simple-masking_el">
                     <span class="h1 mb-0 text-dark none-break">${esc(p.name)}</span>
                   </div></div>
                 </div>
-                <div class="col-lg-3 col-sm-4 col-12 text-dark d-sm-block d-none">
+                <div class="col-lg-5 col-sm-4 col-12 text-dark d-sm-block d-none">
                   <p class="mb-0 desc project_blurb">${esc(red ? p.redDesc : p.desc)}</p>
                   <p class="mb-0 sub-content">${esc(p.stack)} · ${esc(p.date)}</p>
                 </div>
@@ -272,7 +272,7 @@ export function projectList(layer) {
   return `
     <div class="${cx('client', red ? 'client__red' : 'js-client')}">
       <div class="row client_info">
-        <div class="col-lg-9 col-sm-10 offset-lg-2 offset-sm-1 col-12">
+        <div class="col-lg-10 col-sm-10 offset-lg-2 offset-sm-1 col-12">
           <div class="client_content container_content ${red ? '' : 'js-cursor-extend'}">
             ${label('Projects', red ? 'text-dark' : '')}
             <div class="client_content_desc h2">
