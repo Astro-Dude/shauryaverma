@@ -278,8 +278,8 @@ export function projectList(layer) {
             <div class="client_content_desc h2">
               ${scrollParagraph(
                 red
-                  ? 'Five repos, and I am <strong>the whole user base</strong>. I build them for everyone and then keep using them myself.'
-                  : 'I build <strong>real systems</strong> end to end: storage, auth, retrieval, agents, and every one of them shipped.',
+                  ? 'Out of all of them only <strong>five qualified</strong> as worth showing. And I only ended up using them, no one else.'
+                  : 'I have built a lot of <strong>real world projects</strong>, and every one of them because I faced the problem myself.',
                 { animate: !red },
               )}
             </div>
