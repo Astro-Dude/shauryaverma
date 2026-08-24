@@ -41,6 +41,7 @@ export const projects = [
     stack: 'JavaScript, Chrome Extensions',
     date: 'Nov. 2025',
     repo: 'https://github.com/Astro-Dude/VibeExtract',
+    live: 'https://chromewebstore.google.com/detail/dom-heist/ejljibcfeobhaehaldildmmgdokmbchc',
   },
   {
     name: 'Waves',
