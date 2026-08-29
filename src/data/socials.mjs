@@ -52,7 +52,7 @@ export const socials = [
   {
     label: 'Resume',
     redLabel: 'One page',
-    href: '/assets/Shaurya_resume.pdf',
+    href: 'https://drive.google.com/file/d/1n39r8DRAkyZiBz2RFoJcEyvMN_CcewgS/view',
     icon: 'resume',
   },
   {
