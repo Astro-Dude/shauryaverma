@@ -252,8 +252,12 @@ label,
   -webkit-user-drag: none;
 }
 
+/* The block is a link, so it points; the text cursor stays only on the value you might copy. */
 .contact_info a[href^='mailto'],
-.contact_info a[href^='tel'] {
+.contact_info a[href^='tel'],
+.contact_info a[href^='mailto'] .sub-content,
+.contact_info a[href^='tel'] .sub-content,
+.contact_info a[href^='mailto'] .js-email {
   cursor: pointer;
 }
 

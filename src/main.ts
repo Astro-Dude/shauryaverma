@@ -36,7 +36,8 @@ import { isTouch, setViewportUnit, trackPointer } from './modules/env';
 gsap.registerPlugin(ScrollTrigger);
 
 function initNav(): void {
-  document.querySelectorAll<HTMLAnchorElement>('.header_menu_item a').forEach((link) => {
+  const links = Array.from(document.querySelectorAll<HTMLAnchorElement>('.header_menu_item a'));
+  links.forEach((link) => {
     link.addEventListener('click', (e) => {
       const href = link.getAttribute('href');
       if (!href?.startsWith('#')) return;
@@ -44,6 +45,40 @@ function initNav(): void {
       scrollTo(href);
     });
   });
+
+  /*
+   * The section you are in lights its nav label, the same state a hover gives it.
+   *
+   * A section is current once its top has passed the middle of the viewport. The last one also wins
+   * at the very bottom of the page, because Contact is shorter than a screen and its top may never
+   * get that far up.
+   *
+   * A plain scroll listener rather than ScrollTrigger: Lenis moves the real window scroll, so this
+   * works with smoothing on or off, and from before the loader has finished.
+   */
+  const spied = links
+    .map((link) => ({ item: link.closest<HTMLElement>('.header_menu_item'), section: document.querySelector<HTMLElement>(link.hash) }))
+    .filter((s): s is { item: HTMLElement; section: HTMLElement } => !!s.item && !!s.section);
+  if (!spied.length) return;
+
+  let queued = false;
+  const update = () => {
+    queued = false;
+    const mid = window.innerHeight / 2;
+    const atEnd = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
+    let current = 0;
+    spied.forEach((s, i) => { if (s.section.getBoundingClientRect().top <= mid) current = i; });
+    if (atEnd) current = spied.length - 1;
+    spied.forEach((s, i) => s.item.classList.toggle('is-active', i === current));
+  };
+  const queue = () => {
+    if (queued) return;
+    queued = true;
+    requestAnimationFrame(update);
+  };
+  window.addEventListener('scroll', queue, { passive: true });
+  window.addEventListener('resize', queue, { passive: true });
+  update();
 }
 
 function boot(): void {

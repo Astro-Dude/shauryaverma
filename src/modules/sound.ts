@@ -1,36 +1,75 @@
 /**
  * The sound toggle.
  *
- * Short synthesised blips on hover and click — no audio files, and nothing is created until
- * the visitor opts in. Default is off: a portfolio that makes noise uninvited is a portfolio
- * people close.
+ * Two kinds of sound, controlled differently:
  *
- * The choice persists, because being re-asked on every visit is its own kind of rude.
+ *   - the haptics: short synthesised blips on hover and click. Always on, toggle or no toggle; they
+ *     are feedback, not music, and quiet enough to be part of the interface.
+ *   - the background track, on loop. This is what the toggle controls, and it defaults to on.
+ *
+ * Browsers allow no audio at all before the visitor's first click, tap or key, so in practice both
+ * start on the loader's Start button. Nothing is created or fetched before that.
+ *
+ * Every visit starts with the music on. Turning it off lasts for that visit only: an earlier version
+ * remembered "off", and one test click was enough to leave the site silent from then on.
  */
 
-const STORAGE_KEY = 'sv:sound';
+import { gsap } from 'gsap';
+
+/* Where an earlier version remembered the toggle. Cleared on load so a stale "off" cannot linger. */
+const LEGACY_STORAGE_KEY = 'sv:sound';
+
+/*
+ * The background track. Hotlinked from the reference site rather than copied into this repo: it
+ * is that site's file, not ours. Swap in a self-hosted track by changing this one line.
+ */
+const MUSIC_SRC = 'https://minhpham.design/assets/mp3/audio-site.mp3';
+const MUSIC_VOLUME = 0.35;
+
+/*
+ * Why the music is being held silent, by whoever asked. The BYOS film is the one caller today: it
+ * has its own soundtrack, and two tracks at once is noise. A set rather than a flag so a second
+ * caller cannot release a hold the first still needs.
+ */
+const holds = new Set<string>();
+let syncMusic: () => void = () => {};
+
+/** Hold the background music silent (or release it) on behalf of `who`. */
+export function holdMusic(who: string, held: boolean): void {
+  if (held) holds.add(who);
+  else holds.delete(who);
+  syncMusic();
+}
 
 export function initSound(root: ParentNode = document): void {
   const button = root.querySelector<HTMLButtonElement>('.js-footer_sound');
   if (!button) return;
 
   let context: AudioContext | null = null;
-  let enabled = false;
+  let enabled = true;
+  /* Whether the page has had a gesture yet: before one, an AudioContext would only start suspended. */
+  let gestured = false;
 
   try {
-    enabled = localStorage.getItem(STORAGE_KEY) === 'on';
+    localStorage.removeItem(LEGACY_STORAGE_KEY);
   } catch {
-    // Private browsing or blocked storage — default off and carry on.
+    // Private browsing or blocked storage: nothing to clear.
   }
+
+  const markGesture = () => {
+    gestured = true;
+    ['pointerdown', 'keydown'].forEach((t) => window.removeEventListener(t, markGesture, true));
+  };
+  ['pointerdown', 'keydown'].forEach((t) => window.addEventListener(t, markGesture, { capture: true, passive: true }));
 
   const paint = () => {
     button.dataset.state = enabled ? 'on' : 'off';
     button.setAttribute('aria-pressed', String(enabled));
   };
 
-  /** Created lazily, and only after a real gesture, per autoplay policy. */
+  /** Created lazily, and only after a real gesture, per autoplay policy. Not gated on the toggle. */
   const ensureContext = (): AudioContext | null => {
-    if (!enabled) return null;
+    if (!gestured) return null;
     if (!context) {
       const Ctor = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
       if (!Ctor) return null;
@@ -60,15 +99,64 @@ export function initSound(root: ParentNode = document): void {
     osc.stop(now + duration + 0.02);
   };
 
+  /*
+   * The music. Faded rather than cut, both ways; iOS ignores `volume`, so there it simply starts
+   * and stops, which is fine.
+   *
+   * A stored "on" from a previous visit has had no gesture yet, and browsers refuse audible playback
+   * until there is one. So a refused play waits for the visitor's first click, tap or key, and
+   * starts then.
+   */
+  const music = document.querySelector<HTMLAudioElement>('.js-web-sound');
+  const level = { v: 0 };
+  let waitingForGesture = false;
+
+  const fadeTo = (to: number, onComplete?: () => void) => {
+    if (!music) return;
+    gsap.to(level, {
+      v: to,
+      duration: to > 0 ? 1.2 : 0.6,
+      ease: 'power1.inOut',
+      overwrite: true,
+      onUpdate: () => { music.volume = level.v; },
+      onComplete,
+    });
+  };
+
+  const retryOnGesture = () => {
+    if (waitingForGesture) return;
+    waitingForGesture = true;
+    const go = () => {
+      waitingForGesture = false;
+      ['pointerdown', 'keydown'].forEach((t) => window.removeEventListener(t, go));
+      syncMusic();
+    };
+    ['pointerdown', 'keydown'].forEach((t) => window.addEventListener(t, go, { passive: true }));
+  };
+
+  syncMusic = () => {
+    if (!music) return;
+    const audible = enabled && holds.size === 0;
+    if (audible) {
+      if (!music.src) {
+        music.src = MUSIC_SRC;
+        music.loop = true;
+        music.preload = 'auto';
+      }
+      if (!music.paused) { fadeTo(MUSIC_VOLUME); return; }
+      music.volume = level.v;
+      music.play().then(() => fadeTo(MUSIC_VOLUME), retryOnGesture);
+    } else if (!music.paused) {
+      fadeTo(0, () => music.pause());
+    }
+  };
+
   button.addEventListener('click', () => {
     enabled = !enabled;
     paint();
-    try {
-      localStorage.setItem(STORAGE_KEY, enabled ? 'on' : 'off');
-    } catch {
-      // Non-fatal: the toggle still works for this session.
-    }
-    if (enabled) blip(880, 0.08, 0.04);
+    // The haptics are always on, so the toggle answers either way: up for on, down for off.
+    blip(enabled ? 880 : 440, 0.08, 0.04);
+    syncMusic();
   });
 
   // Interactive rows get a quiet tick; the pitch shifts a little so a fast sweep across the
@@ -78,6 +166,7 @@ export function initSound(root: ParentNode = document): void {
   });
 
   paint();
+  syncMusic();
 }
 
 /**

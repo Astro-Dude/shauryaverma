@@ -96,13 +96,20 @@
   transform: translateY(100%);
 }
 
+/*
+ * `is-active` is the section you are in, set by main.ts as you scroll. Keyboard focus shows the same
+ * state, but only `:focus-visible`: a mouse click leaves focus on the link, and with `:focus-within`
+ * that label stayed lit after you had scrolled somewhere else entirely.
+ */
 .header_menu_item:hover .header_menu_item_link__deep,
-.header_menu_item:focus-within .header_menu_item_link__deep {
+.header_menu_item.is-active .header_menu_item_link__deep,
+.header_menu_item:has(:focus-visible) .header_menu_item_link__deep {
   transform: translateY(-100%);
 }
 
 .header_menu_item:hover .header_menu_item_link__active,
-.header_menu_item:focus-within .header_menu_item_link__active {
+.header_menu_item.is-active .header_menu_item_link__active,
+.header_menu_item:has(:focus-visible) .header_menu_item_link__active {
   transform: translateY(0);
 }
 
@@ -705,8 +712,8 @@
  * A tall runway with a sticky window inside it.
  *
  * The section is 155vh, and the window sticks to the top of the viewport for the last 55vh of that,
- * so the scroll slows over the panel: it grows to full screen, holds there long enough to read what
- * the agent is doing, then releases. That hold is the friction, and 55vh is about half a screen of
+ * so the scroll slows over the panel: it grows to full screen, holds there long enough to take in the
+ * film, then releases. That hold is the friction, and 55vh is about half a screen of
  * scrolling - 140vh was tried first and it read as the page having jammed.
  *
  * CSS sticky rather than a ScrollTrigger pin, and that is not a stylistic preference. Pinning would
@@ -765,39 +772,15 @@
 /* ---------- featured panel ---------- */
 
 /*
- * BYOS's interface, rebuilt from its components.
+ * BYOS's demo film, in a window.
  *
- * Every value here is from the project's own design system (BYOS/tokens.json, BYOS/theme.css) rather
- * than from this page's palette, because the point is to show what the project looks like. Its two
- * typefaces are licensed and are substituted, which is the same call this rebuild makes everywhere
- * else it cannot ship a font.
+ * `--grow` is scrubbed 0 -> 1 as the band scrolls into place, which is how the reference treats its
+ * reel: it enters inset to the content column and expands as it rises. Measured on the reference,
+ * from x238-1201 to x0-1440 at a 1440 viewport.
  *
- * The tokens are scoped to this block so a light-on-white interface cannot leak into a page whose
- * every other surface is #0d0d0d.
+ * It ends at the full width of the page, edge to edge (see measure() in showcase.ts).
  */
 .byos {
-  --ink: #17191c;
-  --paper: #ffffff;
-  --mist: #f2f2f3;
-  --fog: #fafafb;
-  --slate: #777b86;
-  --ash: #979799;
-  --smoke: #a3a6af;
-  /* Its tokens call this "the only chromatic surface in the system", so it is the only one used. */
-  --peach: #fbe1d1;
-  --sienna: #5d2a1a;
-  --line: #ececec;
-  --serif: ui-serif, Georgia, 'Times New Roman', serif;
-  --sans: 'Nunito Sans', ui-sans-serif, system-ui, sans-serif;
-
-  /*
-   * `--grow` is scrubbed 0.66 -> 1 as the band scrolls into place, which is how the reference treats
-   * its reel: it enters inset to the content column and expands as it rises. Measured on the
-   * reference, from x238-1201 to x0-1440 at a 1440 viewport.
-   *
-   * It stops short of the page edges rather than going truly full-bleed, so the window keeps a margin
-   * either side and still reads as a window.
-   */
   --grow: 0;
   margin-inline: auto;
 }
@@ -805,15 +788,9 @@
 /*
  * The window SCALES, it does not stretch.
  *
- * `--grow` runs 0 to 1 as the band rises, taking the interface from an inset card with clear margins
- * either side to filling the viewport edge to edge. The first attempt interpolated width and height
- * and let the interior reflow, which broke it: at full screen the rows sat at the top, the ask bar at
- * the bottom, and half the viewport was empty white in between.
- *
- * So the window keeps ONE design size and is scaled. Everything inside grows together and the
- * composition survives at both ends. `--s0` and `--s1` are the two scales, written by showcase.ts on
- * resize because they depend on the viewport in a way calc() cannot express: the end scale covers the
- * larger of the two axes so the interface fills the screen rather than letterboxing.
+ * It keeps ONE design size and is scaled, so the corner radius and shadow are drawn against a single
+ * box at every stage of the grow. `--s0` and `--s1` are the two scales, written by showcase.ts on
+ * resize because they depend on the viewport in a way calc() cannot express.
  */
 .byos_scale {
   --s: calc(var(--s0) + (var(--s1) - var(--s0)) * var(--grow));
@@ -826,395 +803,34 @@
 
 .byos_win {
   position: relative;
-  display: grid;
-  grid-template-columns: 3.25rem 1fr;
   /*
-   * The one design size everything else is drawn against, in PIXELS on purpose.
+   * The design size, in PIXELS on purpose, and the film's own 16:9. It has to be the same number as
+   * FILM in showcase.ts. This site scales rem, so rem here would disagree with the module's maths.
    *
-   * This was written in rem first, which was wrong twice over: this site scales rem (1rem is about
-   * 13.3px, not 16), so the box came out 750px while showcase.ts was computing scales against a
-   * different number entirely. A fixed design canvas wants absolute units, and it has to be the same
-   * number in both files.
-   *
-   * The size is also the type size. Because the window is scaled to fill the viewport, a smaller
-   * canvas means a larger multiplier and bigger text: at 900px wide it reached the screen at 1.6x and
-   * read as oversized. 1280 lands at about 1.13x on a 1440 screen, which is close to drawn size.
+   * One size at every breakpoint: the film is landscape, so a phone gets it letterboxed into the
+   * width rather than cropped into a portrait card.
    */
   width: 1280px;
-  height: 800px;
+  height: 720px;
   overflow: hidden;
-  background: var(--paper);
+  /* The film's own backdrop colour, so nothing flashes while the poster loads. */
+  background: #eeeee9;
   /*
-   * --radius-2xl, held constant on screen.
-   *
    * Divided by the scale, so it renders as a 16px corner at every size rather than a 16px corner
-   * multiplied by however far the window has grown. It no longer flattens to square at the end
-   * either: the window stops short of the edges, so it stays a rounded card the whole way.
+   * multiplied by however far the window has grown. Eased out with `--grow` as well, because it
+   * ends full-width, and round corners against the screen edge read as a rendering fault.
    */
-  border-radius: calc(16px / var(--s));
-  font-family: var(--sans);
-  /* The window has to lift off a near-black page, which a border alone will not do. Kept at full
-   * strength throughout, since there is always page around it to cast onto. */
+  border-radius: calc(16px * (1 - var(--grow)) / var(--s));
+  /* The window has to lift off a near-black page, which a border alone will not do. */
   box-shadow: 0 1.5rem 4rem rgba(0, 0, 0, 0.55);
 }
 
-/* --- the icon rail --- */
-
-.byos_rail {
-  display: grid;
-  justify-items: center;
-  align-content: start;
-  gap: 0.75rem;
-  padding: 0.75rem 0;
-  border-right: 1px solid var(--line);
-  background: var(--fog);
+.byos_film {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
-
-.byos_mark {
-  display: grid;
-  place-items: center;
-  width: 1.625rem;
-  height: 1.625rem;
-  border-radius: 8px;
-  background: var(--ink);
-  color: var(--paper);
-  font-family: var(--serif);
-  font-size: 0.8125rem;
-}
-
-.byos_new {
-  display: grid;
-  place-items: center;
-  width: 1.625rem;
-  height: 1.625rem;
-  margin-bottom: 0.25rem;
-  border: 1px solid var(--line);
-  border-radius: 50%;
-  color: var(--ink);
-  font-size: 0.875rem;
-  line-height: 1;
-}
-
-/*
- * Five different silhouettes, from one element each.
- *
- * Identical squares read as a column of checkboxes rather than as a navigation rail, which is what
- * the first pass looked like. Drive, starred, links, duplicates, agent: a rounded rect, a rotated
- * square, a ring, an offset pair, a small diamond.
- */
-.byos_ico {
-  width: 0.875rem;
-  height: 0.875rem;
-  border: 1.5px solid var(--smoke);
-  border-radius: 3px;
-}
-
-.byos_ico:nth-of-type(2) { border-radius: 2px; transform: rotate(45deg) scale(0.8); }
-.byos_ico:nth-of-type(3) { border-radius: 50%; }
-.byos_ico:nth-of-type(4) { box-shadow: 0.1875rem -0.1875rem 0 -0.0625rem var(--paper), 0.25rem -0.25rem 0 -0.0625rem var(--smoke); }
-.byos_ico:nth-of-type(5) { border-radius: 1px; transform: rotate(45deg) scale(0.62); }
-
-.byos_ico.is-on {
-  border-color: var(--ink);
-  background: var(--mist);
-}
-
-/* --- the header --- */
-
-.byos_main {
-  position: relative;
-  display: grid;
-  grid-template-rows: auto auto 1fr;
-  min-width: 0;
-}
-
-.byos_top {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  padding: 0.625rem 0.875rem;
-  border-bottom: 1px solid var(--line);
-}
-
-.byos_search {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  width: min(20rem, 58%);
-  padding: 0.4375rem 0.75rem;
-  border-radius: 999px;
-  background: var(--mist);
-  color: var(--smoke);
-  font-size: 0.6875rem;
-}
-
-.byos_kbd {
-  margin-left: auto;
-  font-size: 0.5625rem;
-  color: var(--ash);
-}
-
-.byos_avatar {
-  display: grid;
-  place-items: center;
-  width: 1.375rem;
-  height: 1.375rem;
-  margin-left: auto;
-  border-radius: 50%;
-  background: var(--ink);
-  color: var(--paper);
-  font-size: 0.5625rem;
-}
-
-.byos_head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.875rem 1rem 0.5rem;
-}
-
-/* Signifier at regular weight is the system's signature; a serif at 400 is the closest honest stand-in. */
-.byos_h1 {
-  font-family: var(--serif);
-  font-size: 1.375rem;
-  font-weight: 400;
-  color: var(--ink);
-}
-
-.byos_seg {
-  display: flex;
-  gap: 0.125rem;
-  padding: 0.125rem;
-  border-radius: 999px;
-  background: var(--mist);
-  font-size: 0.5625rem;
-  color: var(--slate);
-}
-
-.byos_seg > span { padding: 0.1875rem 0.5rem; border-radius: 999px; }
-.byos_seg > .is-on { background: var(--paper); color: var(--ink); }
-
-/* --- the file list --- */
-
-.byos_rows { padding: 0 1rem; }
-
-.byos_row {
-  display: grid;
-  grid-template-columns: 0.75rem 0.75rem 1fr auto auto 0.5rem;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.4375rem 0.375rem;
-  border-bottom: 1px solid var(--line);
-  font-size: 0.6875rem;
-  color: var(--ink);
-}
-
-/*
- * A page with its corner turned down. Without the fold it is a rounded square, which at this size is
- * indistinguishable from the checkbox that sits in the same column of the real app.
- */
-.byos_doc {
-  width: 0.5625rem;
-  height: 0.75rem;
-  border: 1px solid var(--smoke);
-  border-radius: 1px;
-  clip-path: polygon(0 0, 68% 0, 100% 22%, 100% 100%, 0 100%);
-}
-
-.byos_name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.byos_when, .byos_size { color: var(--ash); font-size: 0.625rem; font-variant-numeric: tabular-nums; }
-.byos_when { width: 3rem; }
-.byos_size { width: 3.25rem; text-align: right; }
-
-.byos_kebab {
-  width: 2px;
-  height: 0.625rem;
-  border-radius: 1px;
-  /* Three dots from one element: cheaper than three, and it is 2px wide. */
-  background: repeating-linear-gradient(var(--smoke) 0 2px, transparent 2px 4px);
-}
-
-/* --- the agent --- */
-
-/* A folder row the agent creates, so it starts with no height at all. */
-.byos_row__new {
-  overflow: hidden;
-  height: 0;
-  padding-top: 0;
-  padding-bottom: 0;
-  border-bottom-color: transparent;
-  opacity: 0;
-}
-
-.byos_folder {
-  width: 0.75rem;
-  height: 0.625rem;
-  border: 1px solid var(--sienna);
-  border-radius: 1px 3px 3px 3px;
-  background: var(--peach);
-}
-
-/* A link, for an alias row: two interlocking rounded stadiums at this size read as a chain. */
-.byos_alias {
-  width: 0.75rem;
-  height: 0.5rem;
-  border: 1px solid var(--sienna);
-  border-radius: 999px;
-  background: var(--peach);
-}
-
-/* The glyph is always in the markup; it only earns its colour once set_favorite has run. */
-.byos_star { color: transparent; font-size: 0.625rem; }
-.byos_star.is-on { color: var(--sienna); }
-
-/* A tag the agent adds. Sits in the name cell, so it arrives beside the file it describes. */
-.byos_name { display: flex; align-items: baseline; gap: 0.375rem; }
-
-.byos_tag {
-  flex: none;
-  padding: 0.0625rem 0.3125rem;
-  border-radius: 999px;
-  background: var(--peach);
-  color: var(--sienna);
-  font-size: 0.5rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-}
-
-/* Two names in one cell, so a rename is a crossfade in place rather than a reflow. */
-.byos_name { position: relative; overflow: hidden; }
-.byos_nm { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.byos_nm__new { position: absolute; inset: 0; opacity: 0; }
-
-/*
- * The agent sits over the list rather than in it, so the plan can arrive and leave without the rows
- * reflowing underneath it.
- */
-.byos_agent {
-  position: absolute;
-  left: 1rem;
-  right: 1rem;
-  bottom: 1rem;
-  display: grid;
-  gap: 0.5rem;
-}
-
-.byos_plan {
-  display: grid;
-  gap: 0.3125rem;
-  /* The steps live in their own element so the module can replace them per turn. */
-  grid-auto-rows: min-content;
-  padding: 0.75rem 0.875rem;
-  border: 1px solid var(--line);
-  /* --radius-xl */
-  border-radius: 12px;
-  background: var(--paper);
-  box-shadow: 0 0.5rem 1.5rem rgba(23, 25, 28, 0.09);
-  opacity: 0;
-}
-
-.byos_plan_t {
-  display: flex;
-  gap: 0.5rem;
-  font-size: 0.5625rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--ash);
-}
-
-.byos_plan_t em { font-style: normal; color: var(--smoke); }
-
-/* The steps wrapper is transparent to layout, so each step still lines up with the plan's grid. */
-.js-byos-steps { display: grid; gap: 0.3125rem; }
-
-.byos_step {
-  display: grid;
-  grid-template-columns: 0.4375rem 6.75rem 1fr auto;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.6875rem;
-  color: var(--ink);
-}
-
-/* The status pip. Hollow while queued, filled once the step has actually run. */
-.byos_st {
-  width: 0.4375rem;
-  height: 0.4375rem;
-  border: 1px solid var(--smoke);
-  border-radius: 50%;
-}
-
-.byos_st.is-done { border-color: var(--ink); background: var(--ink); }
-
-/* The real tool names from the agent's own tool table, so it reads as the API it is. */
-.byos_step em {
-  font-style: normal;
-  font-size: 0.5625rem;
-  letter-spacing: 0.02em;
-  color: var(--slate);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-}
-
-.byos_step_w { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-.byos_step_g {
-  font-size: 0.5rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--smoke);
-  opacity: 0;
-}
-
-.byos_plan_n {
-  padding-top: 0.375rem;
-  border-top: 1px solid var(--line);
-  font-size: 0.5rem;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--slate);
-  opacity: 0;
-}
-
-.byos_ask {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.4375rem 0.4375rem 0.4375rem 0.875rem;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--paper);
-  box-shadow: 0 0.5rem 1.5rem rgba(23, 25, 28, 0.07);
-}
-
-.byos_ask_p {
-  display: flex;
-  align-items: center;
-  flex: 1;
-  min-width: 0;
-  font-size: 0.6875rem;
-  color: var(--ink);
-}
-
-.byos_caret {
-  width: 1px;
-  height: 0.75rem;
-  margin-left: 1px;
-  background: var(--ink);
-}
-
-.byos_chip {
-  flex: none;
-  padding: 0.1875rem 0.5rem;
-  border: 1px solid var(--peach);
-  border-radius: 999px;
-  background: var(--peach);
-  font-size: 0.5625rem;
-  color: var(--sienna);
-}
-
-.byos_send { flex: none; width: 1.375rem; height: 1.375rem; border-radius: 50%; background: var(--mist); }
 
 /*
  * Caption below the band, in flow.
@@ -1224,7 +840,7 @@
  * register through this section.
  */
 /*
- * The panel-wide link. Sits above the interface so a click anywhere on the band opens the app, which
+ * The panel-wide link. Sits above the film so a click anywhere on the band opens the app, which
  * is how the reference's reel behaves.
  */
 .videoPlayer_link {
@@ -1266,24 +882,8 @@
   color: var(--c-bg);
 }
 
-/* The dark layer has the interface instead, so its copy of the label must not show through it. */
+/* The dark layer has the film instead, so its copy of the label must not show through it. */
 .layer__dark .videoPlayer_cta { display: none; }
-
-@media (max-width: 767px) {
-  /*
-   * Phones get a phone-shaped canvas. Scaling a 900px-wide desktop interface down to fit 375px would
-   * put its type at 40% and make it unreadable, so the narrow breakpoint is drawn at its own size and
-   * scaled up from there like every other screen.
-   */
-  .byos_win { width: 420px; height: 640px; grid-template-columns: 2.25rem 1fr; }
-  /* At phone width the columns that carry the least stop earning their space. */
-  .byos_row { grid-template-columns: 0.75rem 0.75rem 1fr auto; }
-  .byos_when, .byos_kebab { display: none; }
-  .byos_h1 { font-size: 1.125rem; }
-  /* The tool name and the gate label are the first things to go when there is no room. */
-  .byos_step { grid-template-columns: 0.4375rem 1fr auto; }
-  .byos_step em { display: none; }
-}
 
 /* ---------- achievements ---------- */
 
@@ -1351,6 +951,44 @@
   border-color: var(--c-text);
   background: hsla(37, 18%, 66%, 0.08);
 }
+
+/* The glyph marks sit inside the ring with air around them, like the lettering they replaced. */
+.thumb-item_logo {
+  display: block;
+  width: 44%;
+  height: 44%;
+  transition: color 0.4s var(--ease-out);
+}
+
+/*
+ * The live glyph takes its brand colour, on white.
+ *
+ * On the page's near-black, CodeChef's brown all but disappears (about 2:1), and both brands set
+ * their marks on white themselves. The white disc also puts the glyph marks on a par with the IIT
+ * seal, which brings its own coloured ground.
+ */
+.thumb-item.is-active .thumb-item_inner:has(.thumb-item_logo__glyph) {
+  background: #ffffff;
+  border-color: #ffffff;
+}
+
+.thumb-item.is-active .thumb-item_logo__glyph {
+  color: var(--brand);
+}
+
+/*
+ * The seal is itself a circle with its own rim, so it fills the ring edge to edge rather than
+ * floating inside it. Grey while inactive: at the rail's dimmed opacity its red and gold still
+ * read as a highlight, and only the live item should look lit.
+ */
+.thumb-item_logo__seal {
+  width: 100%;
+  height: 100%;
+  filter: grayscale(1);
+  transition: filter 0.4s var(--ease-out);
+}
+
+.thumb-item.is-active .thumb-item_logo__seal { filter: none; }
 
 /* A small red arrow marking the live item. */
 .testimonials_thumbs_flash {
@@ -1562,16 +1200,38 @@
 }
 
 /*
- * No vertical padding, and the value set tighter than the global .sub-content leading.
+ * The hover band, padded out past the text the way the reference's is, and cancelled by an equal
+ * negative margin so the text itself sits exactly where it did and the block adds no height.
  *
- * The distribution above can only stretch this column to match the links: if its natural height
- * already exceeds theirs it becomes the tallest thing in the row and drives the height instead,
- * which is what left it overshooting by ~26px. Kept comfortably under so the links always win.
+ * Adding no height matters: the distribution below can only stretch this column to match the
+ * links, and if its natural height exceeded theirs it would drive the row instead, which is what
+ * once left it overshooting by ~26px.
+ *
+ * No rules either. `.heading-mask` draws a hairline under the last row of a list, and each of these
+ * is alone in its column, so it was always "last".
  */
-.contact_info .heading-mask_el {
-  padding-top: 0;
-  padding-bottom: 0;
+.contact_info {
+  --pad-y: 0.625rem;
+  --pad-x: 0.75rem;
+  margin: calc(var(--pad-y) * -1) calc(var(--pad-x) * -1);
+  border: 0;
 }
+
+.contact_info .heading-mask_el {
+  padding: var(--pad-y) var(--pad-x);
+}
+
+/* At rest the value sits back behind its label; on the band both are full-strength dark. */
+.contact_info .heading-mask_el__deep .sub-content {
+  opacity: 0.6;
+}
+
+/* Dark on red at a light weight goes thin, so the band's copy of the value is set a step heavier. */
+.contact_info .heading-mask_el__masking .sub-content {
+  font-weight: 500;
+}
+
+.contact_info_link { display: block; }
 
 .contact_info .sub-content {
   display: block;
@@ -1584,7 +1244,7 @@
   margin-bottom: 0.15em;
 }
 
-.contact_info__top { margin-bottom: 1.875rem; }
+.contact_info__top { margin-bottom: calc(1.875rem - var(--pad-y)); }
 
 .contact_info__red { padding-left: 0.625rem; }
 
@@ -1598,7 +1258,7 @@
     margin-bottom: 0;
     padding-left: 0.2em;
   }
-  .contact_info__top { margin-bottom: 1.25rem; }
+  .contact_info__top { margin-bottom: calc(1.25rem - var(--pad-y)); }
 }
 
 @media (min-width: 992px) {
@@ -1623,10 +1283,10 @@
     flex-wrap: nowrap;
   }
 
-  /* Spacing is the flex distribution's job now. */
+  /* Spacing is the flex distribution's job now; only the band's offset is left. */
   .contact_info__top {
-    margin-top: 0;
-    margin-bottom: 0;
+    margin-top: calc(var(--pad-y) * -1);
+    margin-bottom: calc(var(--pad-y) * -1);
   }
 }
 

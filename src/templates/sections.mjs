@@ -17,6 +17,7 @@ import { projects } from '../data/projects.mjs';
 import { achievements } from '../data/achievements.mjs';
 import { socials } from '../data/socials.mjs';
 import { cx, esc, headingMask, scrollParagraph, label, displayLines } from './helpers.mjs';
+import { orgLogo } from './icons.mjs';
 
 const isRed = (layer) => layer === 'red';
 
@@ -352,61 +353,29 @@ export function showcase(layer) {
           ><span class="visually-hidden">Open ${esc(flagship.name)}, live</span></a>
 
           <!--
-            BYOS's own interface, rebuilt from its components, running its agent.
+            BYOS's demo film, cut in BYOS/apps/film.
 
-            Not a screen recording and not screenshots. Both were tried: a video came to 2.6MB and
-            amounted to watching someone scroll, and stills read as a slideshow. Built from components
-            it is a few KB, stays sharp, and can actually show the feature working.
+            Played muted and looping while it is on screen, and only fetched once it is close: the
+            sources are data attributes, and showcase.ts picks one for the viewport and sets it. The
+            Sound toggle in the footer unmutes it, since that is the visitor saying they want sound.
 
-            What it shows is true, and the permission chip is the reason it is true. PROJECT.md 4.8
-            gives the agent four modes; on AUTO-ORGANIZE reversible work - folders, renames, moves,
-            tags - runs immediately, while destructive or public steps still wait for a click. So the
-            reversible steps here complete and change the file list, and delete_file and
-            create_share_link sit and wait. The tool names are the real ones from that table.
-
-            Design system is BYOS's own, from BYOS/tokens.json and theme.css. Its two typefaces
-            (Signifier, Sohne) are licensed and substituted, as elsewhere in this rebuild.
-
-            Decorative: the caption underneath says what it is in text.
+            Decorative to assistive tech: the panel is a link and says where it goes.
           -->
           ${red ? '' : `
           <div class="byos js-byos" aria-hidden="true">
             <div class="byos_scale">
             <div class="byos_win">
-              <div class="byos_rail">
-                <span class="byos_mark">B</span>
-                <span class="byos_new">+</span>
-                ${Array.from({ length: 5 }, (_, i) => `<span class="byos_ico${i === 0 ? ' is-on' : ''}"></span>`).join('')}
-              </div>
-
-              <div class="byos_main">
-                <div class="byos_top">
-                  <span class="byos_search">Search files &amp; folders&hellip;<span class="byos_kbd">&#8984;K</span></span>
-                  <span class="byos_avatar">S</span>
-                </div>
-
-                <div class="byos_head">
-                  <span class="byos_h1">My Drive</span>
-                  <span class="byos_seg"><span class="is-on">List</span><span>Grid</span></span>
-                </div>
-
-                <!-- Filled per scenario by showcase.ts, so the loop can run several. -->
-                <div class="byos_rows js-byos-rows"></div>
-
-                <span class="byos_agent">
-                  <span class="byos_plan js-byos-plancard">
-                    <span class="byos_plan_t">Plan <em class="js-byos-count"></em></span>
-                    <span class="js-byos-steps"></span>
-                    <span class="byos_plan_n js-byos-note"></span>
-                  </span>
-
-                  <span class="byos_ask">
-                    <span class="byos_ask_p"><span class="js-byos-typed"></span><span class="byos_caret js-byos-caret"></span></span>
-                    <span class="byos_chip js-byos-chip">Auto-organize</span>
-                    <span class="byos_send"></span>
-                  </span>
-                </span>
-              </div>
+              <video
+                class="byos_film js-byos-film"
+                poster="/assets/byos/poster.jpg"
+                data-src-sm="/assets/byos/byos-720p.mp4"
+                data-src-lg="/assets/byos/byos-1080p.mp4"
+                muted
+                loop
+                playsinline
+                preload="none"
+                disablepictureinpicture
+              ></video>
             </div>
             </div>
           </div>`}
@@ -465,7 +434,7 @@ export function achievementList(layer) {
                     .map(
                       (a, i) => `
                     <li class="thumb-item ${i === 0 ? 'is-active' : ''}">
-                      <span class="thumb-item_inner">${esc(a.badge)}</span>
+                      <span class="thumb-item_inner">${orgLogo(a.logo)}</span>
                     </li>`,
                     )
                     .join('')}
@@ -516,8 +485,9 @@ export function motto(layer) {
 
 export function contact(layer) {
   const red = isRed(layer);
-  const half = Math.ceil(socials.length / 2);
-  const columns = [socials.slice(0, half), socials.slice(half)];
+  const listed = socials.filter((s) => s.inList !== false);
+  const half = Math.ceil(listed.length / 2);
+  const columns = [listed.slice(0, half), listed.slice(half)];
 
   const linkList = (group) => `
     <ul class="ul__reset">
@@ -538,11 +508,12 @@ export function contact(layer) {
   const emailParts = site.contact.email.split('@');
 
   const infoBlock = (title, note, value, href, extraClass = '') => `
-    <div class="${cx('heading-mask', 'contact_info', extraClass, !red && 'js-cursor-contract', 'heading-mask__now', red && 'contact_info__red')}">
-      <div class="heading-mask_el heading-mask_el__deep">
+    <div class="${cx('heading-mask', 'contact_info', extraClass, !red && 'js-heading-mask', !red && 'js-cursor-contract', 'heading-mask__now', red && 'contact_info__red')}">
+      <!-- The whole block is the link, title included: the value alone was a 16px-tall target. -->
+      <a class="heading-mask_el heading-mask_el__deep contact_info_link" href="${esc(href)}">
         <span class="h4 d-block">${esc(title)}</span>
-        <a class="sub-content" href="${esc(href)}">${value}</a>
-      </div>
+        <span class="sub-content">${value}</span>
+      </a>
       <div class="heading-mask_el heading-mask_el__masking" aria-hidden="true">
         <span class="h4 d-block text-dark">${esc(note)}</span>
         <span class="sub-content text-dark">${value}</span>

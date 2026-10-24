@@ -133,11 +133,6 @@ const clipped = await page.evaluate(() => {
     if (el.querySelector('.js-anim--scale') || el.closest('.js-anim--scale')) return;
     if (/_bg$|_bg\s/.test(String(el.className))) return;
     /*
-     * A row the featured panel's agent creates. It rests collapsed to zero height with its content
-     * still in the DOM, because opening it IS the animation, so it is clipped by definition.
-     */
-    if (el.classList.contains('byos_row__new')) return;
-    /*
      * A revealed row name is deliberately wider than its column and cut at the boundary, which is
      * the effect the reference uses. Clipped by design, so not a finding.
      */

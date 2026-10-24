@@ -15,14 +15,26 @@ export function initAchievements(root: ParentNode = document): void {
   if (!section) return;
 
   const items = Array.from(section.querySelectorAll<HTMLElement>('.js-testimonial'));
-  const thumbs = Array.from(section.querySelectorAll<HTMLElement>('.thumb-item'));
-  const flash = section.querySelector<HTMLElement>('.js-testimonials_thumbs_flash');
   if (!items.length) return;
 
-  const setActive = (index: number) => {
-    thumbs.forEach((t, i) => t.classList.toggle('is-active', i === index));
-    if (flash && thumbs[index]) {
+  /*
+   * Every copy of the rail: the dark layer's, and the red layer's under the spotlight. Only the dark
+   * one used to move, so opening the spotlight over the rail showed the first item lit regardless.
+   */
+  const rails = Array.from(root.querySelectorAll<HTMLElement>('.testimonials_thumbs_inner')).map((rail) => ({
+    thumbs: Array.from(rail.querySelectorAll<HTMLElement>('.thumb-item')),
+    flash: rail.querySelector<HTMLElement>('.js-testimonials_thumbs_flash'),
+  }));
+
+  let current = -1;
+
+  const setActive = (index: number, animate = true) => {
+    if (index === current) return;
+    current = index;
+    for (const { thumbs, flash } of rails) {
+      thumbs.forEach((t, i) => t.classList.toggle('is-active', i === index));
       const target = thumbs[index];
+      if (!flash || !target) continue;
       // The flash is positioned against the rail, so measure inside it.
       const railTop = (target.offsetParent as HTMLElement | null)?.offsetTop ?? 0;
       /*
@@ -36,22 +48,40 @@ export function initAchievements(root: ParentNode = document): void {
        */
       gsap.to(flash, {
         y: target.offsetTop - railTop + (target.offsetHeight - flash.offsetHeight) / 2,
-        duration: prefersReducedMotion() ? 0 : 0.45,
+        duration: animate && !prefersReducedMotion() ? 0.45 : 0,
         ease: 'power3.out',
+        overwrite: true,
       });
     }
   };
 
-  setActive(0);
+  /*
+   * The live item is worked out from where things are, every update, rather than from enter events.
+   *
+   * It used to be event-driven: each item lit itself on entering a band in the middle of the
+   * viewport. Nothing un-lit it on the way back, and the items are taller than that band, so their
+   * zones overlapped. Scroll down until 03 lit, back up, and 02 never re-entered (it had never left),
+   * so 03 stayed lit over 02. A fast flick could also fire several enters in one frame, and the last
+   * one created won rather than the one on screen.
+   *
+   * Now it is simply the last item whose top has crossed the middle of the viewport. One answer for
+   * any scroll position, whichever direction it was reached from and however fast.
+   */
+  const pick = () => {
+    const mid = window.innerHeight / 2;
+    let index = 0;
+    items.forEach((item, i) => { if (item.getBoundingClientRect().top <= mid) index = i; });
+    return index;
+  };
 
-  items.forEach((item, index) => {
-    ScrollTrigger.create({
-      trigger: item,
-      // Fire when the item occupies the middle band of the viewport, which is where it reads.
-      start: 'top 65%',
-      end: 'bottom 35%',
-      onEnter: () => setActive(index),
-      onEnterBack: () => setActive(index),
-    });
+  setActive(pick(), false);
+
+  ScrollTrigger.create({
+    trigger: section,
+    start: 'top bottom',
+    end: 'bottom top',
+    onUpdate: () => setActive(pick()),
+    // A refresh can move the thumbs (resize, breakpoint), so the marker is re-placed even if the item is unchanged.
+    onRefresh: () => { current = -1; setActive(pick(), false); },
   });
 }

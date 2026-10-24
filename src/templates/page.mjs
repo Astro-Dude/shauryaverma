@@ -87,7 +87,7 @@ function footer() {
           .join('')}
       </ul>
       <button class="footer_sound js-cursor-contract js-footer_sound desc text-uppercase btn-clear"
-              type="button" aria-pressed="false">
+              type="button" aria-pressed="true" data-state="on">
         <span class="footer_sound_label">Sound</span>
         <span class="footer_sound_list">
           <span class="footer_sound_list_item js-footer_sound_list_item__on">On</span>
