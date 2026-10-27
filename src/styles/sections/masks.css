@@ -55,6 +55,11 @@
   transition: clip-path var(--dur-mask-out) var(--ease-out);
 }
 
+/* A row that opens a "how it works" popup is clickable across its whole band, not just the name. */
+.heading-mask.has-arch {
+  cursor: pointer;
+}
+
 .heading-mask.is-hover .heading-mask_el__masking {
   clip-path: inset(0);
   transition: clip-path var(--dur-mask-in) var(--ease-out);

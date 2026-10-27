@@ -1,0 +1,1093 @@
+/*
+ * "How it works" popup.
+ *
+ * A different world from the page behind it on purpose: the site is dark and cinematic, this is
+ * warm paper and engineering drawings. The system follows a neo-brutalist reference:
+ *   - paper #fafafa with a faint grid, black 1px lines, hard 5px offset shadows, no soft shadows;
+ *   - Geist for words, Geist Mono for labels, numbers and anything that reads like a readout;
+ *   - orange is the voice (headline, numbers, what is moving), chartreuse is the highlighter
+ *     (the step being played), everything else is black and greys;
+ *   - radii are 12px (cards), 4px (small things) or fully round (pills). Nothing else.
+ */
+
+.arch {
+  --p-paper: #fafafa;
+  --p-ink: #000;
+  --p-steel: #6c6c6c;
+  --p-ash: #b3b3b3;
+  --p-line: rgba(0, 0, 0, 0.12);
+  --p-orange: #ff5b29;
+  --p-lime: #f5ff80;
+  --p-shadow: 5px 5px 0 0 #000;
+  --p-sans: 'Geist Sans', ui-sans-serif, system-ui, sans-serif;
+  --p-mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --p-ease: cubic-bezier(0.165, 0.84, 0.44, 1);
+
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  font-family: var(--p-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--p-ink);
+}
+
+html.arch-open,
+html.arch-open body {
+  overflow: hidden;
+}
+
+/* Zero-specificity resets, so every component's own rules win without !important. */
+.arch :where(button) {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+  text-align: inherit;
+}
+
+.arch :where(h2, h3, h4, p, ol, ul, dl, pre) {
+  margin: 0;
+}
+
+.arch :where(ol, ul) {
+  padding: 0;
+  list-style: none;
+}
+
+.arch :focus {
+  outline: none;
+}
+
+.arch :focus-visible {
+  outline: 2px solid var(--p-ink);
+  outline-offset: 2px;
+}
+
+.arch code,
+.arch pre {
+  font-family: var(--p-mono);
+  font-size: 12.5px;
+}
+
+.arch ::selection {
+  background: var(--p-lime);
+  color: var(--p-ink);
+}
+
+/* ------------------------------------------------------------------ shell */
+
+.arch_backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 8, 8, 0.55);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+
+.arch_panel {
+  position: relative;
+  width: calc(100vw - 120px);
+  height: calc(100dvh - 96px);
+  outline: none;
+  background-color: var(--p-paper);
+  background-image:
+    linear-gradient(var(--p-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--p-line) 1px, transparent 1px);
+  background-size: 32px 32px;
+  background-position: -1px -1px;
+  border: 1px solid var(--p-ink);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+/* The grid is texture, not content: fade it so it never competes with the diagrams. */
+.arch_panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(250, 250, 250, 0.72);
+  pointer-events: none;
+}
+
+.arch_bar {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 6;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 0 16px 0 24px;
+  background: var(--p-paper);
+  border-bottom: 1px solid var(--p-ink);
+}
+
+.arch_bar_title {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font: 500 13px var(--p-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.arch_bar_title span {
+  color: var(--p-steel);
+}
+
+.arch_bar_actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+.arch_links {
+  display: flex;
+  gap: 8px;
+}
+
+.arch_link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 16px;
+  border-radius: 9999px;
+  border: 1.5px solid var(--p-ink);
+  font: 600 14px var(--p-sans);
+  color: var(--p-ink);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.arch_link.is-primary {
+  background: var(--p-ink);
+  color: var(--p-paper);
+}
+
+.arch_link i {
+  font-style: normal;
+}
+
+.arch_link:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 2px 2px 0 0 var(--p-ink);
+}
+
+.arch_close {
+  position: relative;
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 9999px;
+  border: 1.5px solid var(--p-ink);
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.arch_close span {
+  position: absolute;
+  left: 11px;
+  right: 11px;
+  top: 50%;
+  height: 1.5px;
+  margin-top: -0.75px;
+  background: currentColor;
+  transform: rotate(45deg);
+}
+
+.arch_close span + span {
+  transform: rotate(-45deg);
+}
+
+.arch_close:hover {
+  background: var(--p-ink);
+  color: var(--p-paper);
+}
+
+.arch_scroll {
+  position: absolute;
+  inset: 64px 0 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--p-ash) transparent;
+}
+
+/* ------------------------------------------------------------------ layout */
+
+.arch-layout {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 40px;
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 0 40px;
+}
+
+.arch-index {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  max-height: calc(100dvh - 160px);
+  overflow-y: auto;
+  padding: 40px 0 32px;
+  scrollbar-width: none;
+}
+
+.arch-index_k,
+.arch-eyebrow,
+.arch-feature_n,
+.arch-story_head > span,
+.arch-drawer_k,
+.arch-drawer_kind,
+.arch-nerd summary,
+.arch-nerd_k {
+  font: 500 12px var(--p-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--p-steel);
+}
+
+.arch-index ol {
+  margin-top: 12px;
+}
+
+.arch-index_item {
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  gap: 6px;
+  width: 100%;
+  padding: 7px 0;
+  font-size: 14px;
+  line-height: 1.35;
+  color: var(--p-steel);
+  transition: color 0.15s;
+}
+
+.arch-index_n {
+  font: 500 12px/1.6 var(--p-mono);
+  color: var(--p-ash);
+}
+
+.arch-index_item:hover,
+.arch-index_item.is-active {
+  color: var(--p-ink);
+}
+
+.arch-index_item.is-active {
+  font-weight: 600;
+}
+
+.arch-index_item.is-active .arch-index_n {
+  color: var(--p-orange);
+}
+
+.arch-index_item.is-secondary {
+  margin-top: 12px;
+  padding-top: 14px;
+  border-top: 1px solid var(--p-ink);
+}
+
+.arch-main {
+  position: relative;
+  min-width: 0;
+  padding: 0 0 80px;
+}
+
+/* ------------------------------------------------------------------ intro */
+
+.arch-intro {
+  padding: 56px 0 48px;
+}
+
+.arch-intro_title {
+  margin-top: 16px;
+  font: 700 clamp(48px, 6vw, 80px)/1.05 var(--p-sans);
+  letter-spacing: -0.03em;
+  color: var(--p-orange);
+}
+
+.arch-intro_tagline {
+  margin-top: 20px;
+  max-width: 30ch;
+  font: 500 clamp(20px, 1.8vw, 24px)/1.35 var(--p-sans);
+  letter-spacing: -0.02em;
+}
+
+.arch-intro_summary {
+  margin-top: 16px;
+  max-width: 62ch;
+  font-size: 16px;
+  color: var(--p-steel);
+}
+
+.arch-intro_hint {
+  margin-top: 24px;
+  font: 400 13px var(--p-mono);
+  color: var(--p-steel);
+}
+
+/* ------------------------------------------------------------------ feature card */
+
+.arch-feature {
+  position: relative;
+  margin-bottom: 40px;
+  padding: 32px;
+  background: var(--p-paper);
+  border: 1px solid var(--p-ink);
+  border-radius: 12px;
+  box-shadow: var(--p-shadow);
+}
+
+.arch-feature_head {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 28px;
+}
+
+.arch-feature_n {
+  color: var(--p-orange);
+}
+
+.arch-feature_name {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  font: 700 clamp(26px, 2.4vw, 34px)/1.15 var(--p-sans);
+  letter-spacing: -0.02em;
+}
+
+.arch-feature_sum {
+  font: 500 18px/1.4 var(--p-sans);
+  letter-spacing: -0.02em;
+}
+
+.arch-feature_desc {
+  max-width: 68ch;
+  font-size: 16px;
+  color: var(--p-steel);
+}
+
+.arch-tag {
+  padding: 3px 10px;
+  border: 1px solid var(--p-ink);
+  border-radius: 9999px;
+  font: 500 11px var(--p-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.arch-feature_grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(280px, 1fr);
+  gap: 32px;
+  align-items: start;
+}
+
+.arch-feature_grid.is-wide {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.arch-feature_chart,
+.arch-system_chart {
+  position: relative;
+  padding: 28px 16px;
+  border: 1px solid var(--p-ink);
+  border-radius: 12px;
+  background:
+    radial-gradient(circle at 1px 1px, rgba(0, 0, 0, 0.16) 1px, transparent 0) 0 0 / 16px 16px,
+    var(--p-paper);
+  overflow: hidden;
+}
+
+/* Story: the steps beside (or under) the chart. */
+.arch-story_head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 8px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--p-ink);
+}
+
+.arch-play {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 16px 0 14px;
+  border-radius: 9999px;
+  background: var(--p-ink);
+  color: var(--p-paper);
+  font: 600 14px var(--p-sans);
+  white-space: nowrap;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.arch-play_icon {
+  font-size: 10px;
+  line-height: 1;
+}
+
+.arch-play:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 2px 2px 0 0 var(--p-orange);
+}
+
+.arch-feature_grid.is-wide .arch-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  column-gap: 32px;
+}
+
+.arch-step_btn {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 0;
+}
+
+.arch-step_n {
+  font: 500 13px/1.7 var(--p-mono);
+  color: var(--p-ash);
+  transition: color 0.2s;
+}
+
+.arch-step_text {
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--p-steel);
+  transition: color 0.2s;
+}
+
+/* The highlighter: a chartreuse marker stroke that sweeps across the step being played. */
+.arch-step_text mark {
+  color: inherit;
+  background: linear-gradient(var(--p-lime), var(--p-lime)) no-repeat 0 0 / 0% 100%;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  padding: 1px 2px;
+  margin: 0 -2px;
+  transition: background-size 0.6s var(--p-ease);
+}
+
+.arch-step_btn:hover .arch-step_text,
+.arch-step.is-done .arch-step_text {
+  color: var(--p-ink);
+}
+
+.arch-step.is-done .arch-step_n {
+  color: var(--p-ink);
+}
+
+.arch-step.is-on .arch-step_n {
+  color: var(--p-orange);
+}
+
+.arch-step.is-on .arch-step_text {
+  color: var(--p-ink);
+}
+
+.arch-step.is-on .arch-step_text mark {
+  background-size: 100% 100%;
+}
+
+/* Nerd corner */
+.arch-nerd {
+  margin-top: 28px;
+  border-top: 1px dashed var(--p-ink);
+}
+
+.arch-nerd summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0 0;
+  cursor: pointer;
+  list-style: none;
+  color: var(--p-ink);
+}
+
+.arch-nerd summary::-webkit-details-marker {
+  display: none;
+}
+
+.arch-nerd summary i {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--p-ink);
+  border-radius: 9999px;
+  font: 400 16px/1 var(--p-sans);
+  font-style: normal;
+  transition: transform 0.25s var(--p-ease), background-color 0.2s, color 0.2s;
+}
+
+.arch-nerd[open] summary i {
+  transform: rotate(45deg);
+  background: var(--p-ink);
+  color: var(--p-paper);
+}
+
+.arch-nerd_body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 32px;
+  padding-top: 16px;
+}
+
+.arch-nerd_body > p {
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.arch-files {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.arch-files code {
+  display: block;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.arch-files span {
+  display: block;
+  font-size: 13px;
+  color: var(--p-steel);
+}
+
+/* ------------------------------------------------------------------ chart */
+
+.arch-chart {
+  position: relative;
+}
+
+.arch-svg {
+  display: block;
+  margin: 0 auto;
+  width: 100%;
+  max-width: var(--natural-w);
+  height: auto;
+  overflow: hidden;
+  cursor: grab;
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+  outline: none;
+}
+
+.arch-chart.is-dragging .arch-svg {
+  cursor: grabbing;
+}
+
+.arch-stipple {
+  fill: var(--p-ink);
+}
+
+.arch-zone_bg {
+  fill: none;
+  stroke: var(--p-ink);
+  stroke-dasharray: 3 4;
+}
+
+.arch-zone_idx {
+  font: 500 11px var(--p-mono);
+  fill: var(--p-orange);
+}
+
+.arch-zone_label {
+  font: 500 12px var(--p-mono);
+  letter-spacing: 0.06em;
+  fill: var(--p-ink);
+}
+
+.arch-zone_desc {
+  font: 400 11px var(--p-sans);
+  fill: var(--p-steel);
+}
+
+.arch-node {
+  cursor: pointer;
+  outline: none;
+  transition: opacity 0.3s var(--p-ease);
+}
+
+.arch-node_box,
+.arch-node_top {
+  fill: var(--p-paper);
+  stroke: var(--p-ink);
+  stroke-width: 1.25;
+  stroke-linejoin: round;
+  transition: fill 0.2s, stroke 0.2s;
+}
+
+.arch-node_side {
+  stroke: var(--p-ink);
+  stroke-width: 1.25;
+  stroke-linejoin: round;
+}
+
+.kind-actor .arch-node_box {
+  stroke-dasharray: 4 3;
+}
+
+.arch-node_icon path {
+  fill: none;
+  stroke: var(--p-ink);
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.arch-node_label {
+  font: 600 15px var(--p-sans);
+  fill: var(--p-ink);
+}
+
+.arch-node_sub {
+  font: 500 10px var(--p-mono);
+  letter-spacing: 0.06em;
+  fill: var(--p-steel);
+}
+
+.arch-node_inferred {
+  fill: none;
+  stroke: var(--p-steel);
+  stroke-dasharray: 1.5 1.5;
+}
+
+.arch-node:hover .arch-node_box,
+.arch-node:focus-visible .arch-node_box,
+.arch-node.is-lit .arch-node_box {
+  stroke: var(--p-orange);
+  stroke-width: 2;
+}
+
+.arch-node.is-lit .arch-node_top,
+.arch-node:hover .arch-node_top {
+  fill: var(--p-lime);
+}
+
+.arch-node.is-current .arch-node_box,
+.arch-node.is-selected .arch-node_box {
+  fill: var(--p-lime);
+  stroke: var(--p-ink);
+  stroke-width: 2;
+}
+
+.arch-node.is-arrived .arch-node_box {
+  animation: arch-arrive 0.5s var(--p-ease);
+}
+
+@keyframes arch-arrive {
+  0% { stroke-width: 5; }
+  100% { stroke-width: 2; }
+}
+
+.arch-edge {
+  cursor: pointer;
+  transition: opacity 0.3s var(--p-ease);
+}
+
+.arch-edge_hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 16;
+}
+
+.arch-edge_line {
+  fill: none;
+  stroke: var(--p-ink);
+  stroke-width: 1.25;
+  transition: stroke 0.2s, stroke-width 0.2s;
+}
+
+.mode-async .arch-edge_line { stroke-dasharray: 6 4; }
+.mode-event .arch-edge_line { stroke-dasharray: 1.5 4; stroke-linecap: round; }
+.mode-stream .arch-edge_line { stroke-dasharray: 10 4 2 4; animation: arch-flow 1.4s linear infinite; }
+
+@keyframes arch-flow {
+  to { stroke-dashoffset: -20; }
+}
+
+.arch-edge:hover .arch-edge_line,
+.arch-edge.is-lit .arch-edge_line {
+  stroke: var(--p-orange);
+  stroke-width: 2;
+}
+
+.arch-arrow {
+  fill: none;
+  stroke: var(--p-ink);
+  stroke-width: 1.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.arch-arrow.is-hot {
+  stroke: var(--p-orange);
+  stroke-width: 1.8;
+}
+
+.arch-edge_label {
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+
+.show-labels .arch-edge_label,
+.arch-edge_label.is-lit {
+  opacity: 1;
+}
+
+.arch-edge_label rect {
+  fill: var(--p-paper);
+}
+
+.arch-edge_label text {
+  font: 500 10px var(--p-mono);
+  letter-spacing: 0.05em;
+  fill: var(--p-ink);
+}
+
+.arch-edge_badge circle {
+  fill: var(--p-ink);
+  transition: fill 0.2s;
+}
+
+.arch-edge_badge text {
+  font: 500 10.5px var(--p-mono);
+  fill: var(--p-paper);
+}
+
+.arch-edge_label.is-current .arch-edge_badge circle {
+  fill: var(--p-orange);
+}
+
+.arch-edge_label.is-current .arch-edge_badge text {
+  fill: var(--p-ink);
+}
+
+.arch-edge_label.is-current .arch-edge_pill rect {
+  fill: var(--p-lime);
+}
+
+.arch-svg.has-focus .arch-node:not(.is-lit) {
+  opacity: 0.28;
+}
+
+.arch-svg.has-focus .arch-edge:not(.is-lit) {
+  opacity: 0.15;
+}
+
+.arch-svg.has-focus .arch-edge_label:not(.is-lit) {
+  opacity: 0.2;
+}
+
+.arch-chart:not(.show-labels) .arch-svg.has-focus .arch-edge_label:not(.is-lit) {
+  opacity: 0;
+}
+
+.arch-trail {
+  fill: none;
+  stroke: var(--p-orange);
+  stroke-width: 3;
+  stroke-linecap: round;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.arch-trail.is-on { opacity: 1; }
+
+.arch-packet {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.arch-packet.is-on { opacity: 1; }
+
+.arch-packet_core {
+  fill: var(--p-orange);
+  stroke: var(--p-ink);
+  stroke-width: 1.5;
+}
+
+.arch-packet_halo {
+  fill: none;
+  stroke: var(--p-orange);
+  stroke-width: 1.5;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: arch-halo 0.9s ease-out infinite;
+}
+
+@keyframes arch-halo {
+  from { transform: scale(0.5); opacity: 1; }
+  to { transform: scale(1.4); opacity: 0; }
+}
+
+.arch-icon path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ------------------------------------------------------------------ drawer */
+
+.arch-drawer {
+  position: absolute;
+  top: 80px;
+  right: 16px;
+  bottom: 16px;
+  z-index: 5;
+  width: min(400px, calc(100% - 32px));
+  padding: 28px 24px 32px;
+  overflow-y: auto;
+  background: var(--p-paper);
+  border: 1px solid var(--p-ink);
+  border-radius: 12px;
+  box-shadow: var(--p-shadow);
+  transform: translateX(calc(100% + 40px));
+  transition: transform 0.45s var(--p-ease);
+  scrollbar-width: thin;
+  scrollbar-color: var(--p-ash) transparent;
+}
+
+.has-drawer .arch-drawer {
+  transform: none;
+}
+
+.arch-drawer_close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 30px;
+  height: 30px;
+  border-radius: 9999px;
+  border: 1px solid var(--p-ink);
+  font: 400 18px/1 var(--p-sans);
+  text-align: center;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.arch-drawer_close:hover {
+  background: var(--p-ink);
+  color: var(--p-paper);
+}
+
+.arch-drawer_kind {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 40px;
+  color: var(--p-orange);
+}
+
+.arch-drawer_title {
+  margin-top: 10px;
+  font: 700 28px/1.15 var(--p-sans);
+  letter-spacing: -0.02em;
+}
+
+.arch-drawer_title i {
+  font-style: normal;
+  color: var(--p-orange);
+}
+
+.arch-drawer_lede {
+  margin-top: 8px;
+  font: 500 18px/1.4 var(--p-sans);
+  letter-spacing: -0.02em;
+}
+
+.arch-drawer_body {
+  margin-top: 14px;
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--p-steel);
+}
+
+.arch-drawer_fun {
+  margin-top: 20px;
+  padding: 14px 16px;
+  background: var(--p-lime);
+  border: 1px solid var(--p-ink);
+  border-radius: 12px;
+}
+
+.arch-drawer_fun .arch-drawer_k {
+  color: var(--p-ink);
+}
+
+.arch-drawer_fun p + p {
+  margin-top: 6px;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.arch-drawer_sec {
+  margin-top: 22px;
+  padding-top: 16px;
+  border-top: 1px solid var(--p-ink);
+}
+
+.arch-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.arch-tagpill {
+  padding: 4px 10px;
+  border: 1px solid var(--p-ink);
+  border-radius: 9999px;
+  font: 500 12px var(--p-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.arch-drawer_feats {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.arch-drawer_feat {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  padding: 10px 16px;
+  border: 1px solid var(--p-ink);
+  border-radius: 9999px;
+  font: 600 14px var(--p-sans);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.arch-drawer_feat i {
+  font-style: normal;
+}
+
+.arch-drawer_feat:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 2px 2px 0 0 var(--p-ink);
+}
+
+.arch-code {
+  margin-top: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--p-ink);
+  border-radius: 4px;
+  background: var(--p-paper);
+  white-space: pre-wrap;
+}
+
+/* ------------------------------------------------------------------ small screens */
+
+@media (max-width: 1100px) {
+  .arch-layout {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 0 24px;
+  }
+
+  .arch-index {
+    display: none;
+  }
+
+  .arch-feature_grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 700px) {
+  .arch_panel {
+    width: 100vw;
+    height: 100dvh;
+    border: 0;
+    border-radius: 0;
+  }
+
+  .arch_bar {
+    padding: 0 10px 0 16px;
+  }
+
+  .arch_bar_title span {
+    display: none;
+  }
+
+  .arch_link {
+    height: 34px;
+    padding: 0 12px;
+    font-size: 13px;
+  }
+
+  .arch_close {
+    width: 34px;
+    height: 34px;
+  }
+
+  .arch_close span {
+    left: 9px;
+    right: 9px;
+  }
+
+  .arch-layout {
+    padding: 0 12px;
+  }
+
+  .arch-intro {
+    padding: 32px 4px;
+  }
+
+  .arch-feature {
+    padding: 20px 16px;
+    box-shadow: 3px 3px 0 0 #000;
+  }
+
+  .arch-feature_chart {
+    padding: 16px 4px;
+  }
+
+  .arch-nerd_body {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .arch-drawer {
+    top: auto;
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    width: auto;
+    max-height: 75%;
+    transform: translateY(calc(100% + 30px));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arch *,
+  .arch *::before {
+    animation: none !important;
+    transition-duration: 0.01ms !important;
+  }
+}

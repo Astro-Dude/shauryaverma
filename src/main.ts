@@ -31,6 +31,7 @@ import { initShowcase } from './modules/showcase';
 import { initAchievements } from './modules/achievements';
 import { initSound, initEmail } from './modules/sound';
 import { initMagnetic } from './modules/magnetic';
+import { initArchitecture } from './modules/architecture';
 import { isTouch, setViewportUnit, trackPointer } from './modules/env';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -90,6 +91,7 @@ function boot(): void {
   // Available immediately — these do not depend on the loader having finished.
   initEmail();
   initHeadingMasks();
+  initArchitecture();
   initNav();
   initSound();
 

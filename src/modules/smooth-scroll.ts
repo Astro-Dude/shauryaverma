@@ -34,6 +34,13 @@ export function scrollTo(target: string | number | HTMLElement): void {
   else if (typeof target !== 'number') document.querySelector(String(target))?.scrollIntoView();
 }
 
+/** Freeze the page while an overlay owns the wheel, and release it after. */
+export function lockScroll(locked: boolean): void {
+  if (!lenis) return;
+  if (locked) lenis.stop();
+  else lenis.start();
+}
+
 /** Elements that translate against the scroll, resolved once at init. */
 interface ParallaxTarget {
   el: HTMLElement;

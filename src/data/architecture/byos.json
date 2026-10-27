@@ -1,0 +1,1575 @@
+{
+  "project": "BYOS",
+  "tagline": "A cloud drive that keeps your files in your own Telegram, GitHub or S3, with an AI sidekick.",
+  "summary": "BYOS is a drive cut in half. Postgres remembers everything about your files: names, folders, versions, tags, links. The actual bytes go to storage you already own. Telegram sign-in doubles as storage setup. Then there's Bao, an AI agent on your own LLM key that answers with receipts and asks before rearranging anything.",
+  "features": [
+    {
+      "id": "telegram-sign-in",
+      "name": "Sign in with Telegram",
+      "summary": "One Telegram code makes your account and plugs in your storage.",
+      "description": "Enter a username, password and phone number. Telegram sends a code, and that's your account and storage sorted. You stay signed in for 30 days. Later a password is enough, unless you've killed your Telegram sessions since. Then it asks for a fresh code.",
+      "underTheHood": "No user exists until the code checks out, so the half-finished login rides in the browser as a Fernet-encrypted ticket that expires after 600 s. The server keeps no pending state. After that: a 15-minute access token living only in React state, plus a refresh token in an httpOnly cookie that rotates on every use.",
+      "steps": [
+        {
+          "from": "user",
+          "to": "web-app",
+          "label": "enters phone",
+          "narration": "You pick a username and password and type your number. India is first in the country list, for reasons.",
+          "mode": "sync"
+        },
+        {
+          "from": "web-app",
+          "to": "auth-service",
+          "label": "signup details",
+          "narration": "The username gets checked, the password gets Argon2-hashed, and both go into the ticket. The database hasn't heard of you yet.",
+          "mode": "sync"
+        },
+        {
+          "from": "auth-service",
+          "to": "telegram",
+          "label": "asks for a code",
+          "narration": "A fresh Telethon client asks Telegram to send you a login code.",
+          "mode": "sync"
+        },
+        {
+          "from": "auth-service",
+          "to": "web-app",
+          "label": "encrypted ticket",
+          "narration": "Your browser holds an encrypted ticket it can't read. It has 10 minutes to come back with the code.",
+          "mode": "sync"
+        },
+        {
+          "from": "web-app",
+          "to": "auth-service",
+          "label": "sends the code",
+          "narration": "You enter the code. Got two-step verification on? Then it asks for that password too.",
+          "mode": "sync"
+        },
+        {
+          "from": "auth-service",
+          "to": "postgres",
+          "label": "creates user + storage",
+          "narration": "Now you exist. Your account and Telegram storage are created together in one transaction, with the session string encrypted.",
+          "mode": "sync"
+        },
+        {
+          "from": "auth-service",
+          "to": "web-app",
+          "label": "token + refresh cookie",
+          "narration": "You get a 15-minute token kept in memory plus a refresh cookie. Reload and the cookie quietly fetches a new one.",
+          "mode": "sync"
+        }
+      ],
+      "keyFiles": [
+        "apps/api/src/byos_api/auth/telegram.py — ticket-based multi-step MTProto login and account/storage upsert",
+        "apps/api/src/byos_api/auth/router.py — /auth/telegram/*, /auth/login/password, /auth/refresh, /auth/logout",
+        "apps/api/src/byos_api/auth/service.py — issuing, rotating and revoking refresh tokens; password login",
+        "apps/api/src/byos_api/core/crypto.py — Fernet encrypt/decrypt/decrypt_ttl",
+        "apps/web/lib/auth-context.tsx — in-memory token, refresh-and-retry on 401, reconnect notice"
+      ],
+      "status": "shipped"
+    },
+    {
+      "id": "bring-your-own-storage",
+      "name": "Uploads to your storage",
+      "summary": "Files land in your Telegram, GitHub or S3. BYOS just remembers where.",
+      "description": "Telegram is connected the moment you sign in. A GitHub repo or any S3-compatible bucket can be added in settings. Drop files and they upload three at a time. If a token dies, only that storage gets flagged, and a banner tells you which.",
+      "underTheHood": "Every backend implements one StorageProvider protocol. Telegram uploads land in Saved Messages, and BYOS keeps the message id, never Telegram's file_id, which expires. GitHub files become release assets on one prerelease per day, dodging the 1,000-assets-per-release cap. GitHub and S3 want the size up front, so uploads spool to memory, then disk, while hashing.",
+      "steps": [
+        {
+          "from": "user",
+          "to": "web-app",
+          "label": "drops files",
+          "narration": "You drag in a pile of files. Three upload at a time, over XMLHttpRequest, because fetch still can't report upload progress.",
+          "mode": "async"
+        },
+        {
+          "from": "web-app",
+          "to": "api-gateway",
+          "label": "multipart upload",
+          "narration": "The upload shows up with your login token. A script using an API key would need the files:write scope.",
+          "mode": "sync"
+        },
+        {
+          "from": "api-gateway",
+          "to": "metadata-engine",
+          "label": "validates and routes",
+          "narration": "Too big, blocked extension or not your folder? Rejected before a single byte moves. Then it picks which storage gets it.",
+          "mode": "sync"
+        },
+        {
+          "from": "metadata-engine",
+          "to": "storage-layer",
+          "label": "streams the bytes",
+          "narration": "Bytes stream to your storage in 1 MiB bites. If the provider complains, the error says which account it was.",
+          "mode": "stream"
+        },
+        {
+          "from": "storage-layer",
+          "to": "telegram",
+          "label": "into Saved Messages",
+          "narration": "The file is posted to your own Saved Messages as a document. You could scroll back and find it there yourself.",
+          "mode": "stream"
+        },
+        {
+          "from": "metadata-engine",
+          "to": "postgres",
+          "label": "writes the record",
+          "narration": "Uploaded the same file twice? The new copy is deleted and you get the old one. A failed save cleans up too.",
+          "mode": "sync"
+        },
+        {
+          "from": "api-gateway",
+          "to": "web-app",
+          "label": "the new file",
+          "narration": "The file pops into your list without a full refresh, and a file.created webhook goes out in the background.",
+          "mode": "sync"
+        }
+      ],
+      "keyFiles": [
+        "apps/api/src/byos_api/storage/base.py — StorageProvider protocol, error types, tags_account",
+        "apps/api/src/byos_api/storage/telegram.py — TelegramClientPool and Saved Messages provider",
+        "apps/api/src/byos_api/storage/github.py — release-asset provider with daily releases",
+        "apps/api/src/byos_api/storage/s3.py — boto3 provider with error translation",
+        "apps/api/src/byos_api/storage/spool.py — memory-then-disk spooling with SHA-256",
+        "apps/api/src/byos_api/files/router.py — upload_file: validation, idempotency, orphan cleanup",
+        "apps/web/app/(app)/dashboard/page.tsx — Drive UI and the upload worker pool",
+        "apps/web/components/settings/storage.tsx — connecting GitHub/S3 and choosing the default"
+      ],
+      "status": "shipped"
+    },
+    {
+      "id": "smart-search",
+      "name": "Plain-English search",
+      "summary": "Cmd+K, then type \"pdfs from last week\" like a normal person.",
+      "description": "The palette shows your recent files before you type anything. It takes operators like type:pdf, size:>2mb and in:reports, or plain phrases like \"pdfs from last week larger than 2mb invoice\". Searching never bothers your storage provider.",
+      "underTheHood": "One regex chops up the query, known operators become filters, and a set of plain rules turns words like \"pdfs\" or \"last week\" into MIME types and date ranges. No AI involved, despite living in a folder called ai. Whatever's left goes to Postgres full-text search, with a trigram index on names for half-typed words.",
+      "steps": [
+        {
+          "from": "user",
+          "to": "web-app",
+          "label": "Cmd+K query",
+          "narration": "You hit Cmd+K, see your recents and start typing. The search fires once you pause.",
+          "mode": "sync"
+        },
+        {
+          "from": "web-app",
+          "to": "api-gateway",
+          "label": "the query",
+          "narration": "If this came from an API key, it needs files:read and counts against that key's rate limit.",
+          "mode": "sync"
+        },
+        {
+          "from": "api-gateway",
+          "to": "metadata-engine",
+          "label": "parses the query",
+          "narration": "`pdfs from last week >2mb invoice` becomes: PDFs, a date range, a minimum size, and the word 'invoice'.",
+          "mode": "sync"
+        },
+        {
+          "from": "metadata-engine",
+          "to": "postgres",
+          "label": "tsvector + trigram",
+          "narration": "The leftover word is matched against the full-text index or a partial name match, best matches first.",
+          "mode": "sync"
+        },
+        {
+          "from": "metadata-engine",
+          "to": "web-app",
+          "label": "ranked results",
+          "narration": "Up to 100 results come back, each with its folder, tags and star.",
+          "mode": "sync"
+        },
+        {
+          "from": "web-app",
+          "to": "user",
+          "label": "jumps to the file",
+          "narration": "Pick one and you're there. It also goes into recents for next time.",
+          "mode": "sync"
+        }
+      ],
+      "keyFiles": [
+        "apps/api/src/byos_api/ai/nl_search.py — operator and natural-language query parser",
+        "apps/api/src/byos_api/files/service.py — search_files / nl_search SQL",
+        "apps/api/alembic/versions/0001_initial.py — pg_trgm, the generated search_vector, GIN indexes",
+        "apps/web/components/dashboard/search-palette.tsx — Cmd+K palette",
+        "apps/web/lib/recents.ts — per-device recents"
+      ],
+      "status": "shipped"
+    },
+    {
+      "id": "permanent-links",
+      "name": "Links that survive replacement",
+      "summary": "Share /you/resume once, swap the file whenever. Link stays put.",
+      "description": "Pick a username, then give any file a link like /{username}/{slug}. Upload a new version and everyone with the link gets it at the same URL. Old versions stick around, and restoring one is instant. Re-uploading the exact same file does nothing.",
+      "underTheHood": "Telegram messages and GitHub release assets can't be edited, so the storage protocol has no replace at all. A replace uploads new bytes, adds version N+1 and moves a pointer, in one transaction. The ETag is the version's SHA-256, so new content at an old URL gets noticed and unchanged content gets a 304.",
+      "steps": [
+        {
+          "from": "user",
+          "to": "web-app",
+          "label": "replaces resume.pdf",
+          "narration": "You hit Replace on resume.pdf, the one you already sent everyone as /alex/resume.",
+          "mode": "sync"
+        },
+        {
+          "from": "web-app",
+          "to": "metadata-engine",
+          "label": "new file arrives",
+          "narration": "BYOS checks you own it and finds which storage it already lives on. Same size and extension checks as any upload.",
+          "mode": "sync"
+        },
+        {
+          "from": "metadata-engine",
+          "to": "storage-layer",
+          "label": "stores new bytes",
+          "narration": "Telegram can't edit a message, so the new version goes up as a brand new Saved Messages document.",
+          "mode": "stream"
+        },
+        {
+          "from": "metadata-engine",
+          "to": "postgres",
+          "label": "moves version pointer",
+          "narration": "Same hash as before? Nothing happens. Otherwise a new version row goes in and the pointer quietly moves over.",
+          "mode": "sync"
+        },
+        {
+          "from": "visitor",
+          "to": "link-resolver",
+          "label": "opens /alex/resume",
+          "narration": "Later someone opens /alex/resume. The limit is 120 requests per 60 s per IP, unless Redis is down. Then nobody's counting.",
+          "mode": "sync"
+        },
+        {
+          "from": "link-resolver",
+          "to": "storage-layer",
+          "label": "fetches the bytes",
+          "narration": "The old ETag no longer matches. BYOS grabs the first chunk before sending headers, so a missing file is an honest 404.",
+          "mode": "stream"
+        },
+        {
+          "from": "link-resolver",
+          "to": "visitor",
+          "label": "new file, same URL",
+          "narration": "They get the new PDF at the old URL. Open it again and it's a 304.",
+          "mode": "stream"
+        }
+      ],
+      "keyFiles": [
+        "apps/api/src/byos_api/files/router.py — replace_file, list_versions, restore_version",
+        "apps/api/src/byos_api/aliases/service.py — slug rules and resolve()",
+        "apps/api/src/byos_api/aliases/router.py — owner CRUD and the public resolve_alias route",
+        "apps/api/src/byos_api/streaming.py — stream_object: first-chunk check, ETag/304, error mapping",
+        "apps/web/components/dashboard/versions-modal.tsx — version history UI",
+        "apps/web/components/dashboard/aliases-panel.tsx — Links page"
+      ],
+      "status": "shipped"
+    },
+    {
+      "id": "shared-folders",
+      "name": "Public folder pages",
+      "summary": "Share a whole folder as a page anyone can browse.",
+      "description": "Give a folder a link and visitors get a public page where they can open subfolders and view or download files. They can't wander outside the folder you shared. A link that doesn't exist gets the 404 page instead of a suspiciously empty folder.",
+      "underTheHood": "Hitting the API URL of a folder link returns a 302 to the Next.js page. That page calls /public routes, and each one works out every folder inside the share, then rejects any id that isn't on the list. Guessing ids gets you nowhere.",
+      "steps": [
+        {
+          "from": "user",
+          "to": "web-app",
+          "label": "shares a folder",
+          "narration": "You pick a slug for the folder. You need a username first, since links live under /{username}/.",
+          "mode": "sync"
+        },
+        {
+          "from": "web-app",
+          "to": "link-resolver",
+          "label": "creates the link",
+          "narration": "The slug gets checked: lowercase letters, digits and dashes. If the folder already has a link, you get a 409.",
+          "mode": "sync"
+        },
+        {
+          "from": "link-resolver",
+          "to": "postgres",
+          "label": "saves the link",
+          "narration": "The database itself makes sure each link points at exactly one thing and each slug is used once.",
+          "mode": "sync"
+        },
+        {
+          "from": "visitor",
+          "to": "link-resolver",
+          "label": "opens the link",
+          "narration": "A visitor opens the link. The API sees it's a folder and bounces them to the web app with a 302.",
+          "mode": "sync"
+        },
+        {
+          "from": "visitor",
+          "to": "web-app",
+          "label": "opens folder page",
+          "narration": "The public page shows breadcrumbs and a list of folders and files.",
+          "mode": "sync"
+        },
+        {
+          "from": "web-app",
+          "to": "link-resolver",
+          "label": "lists one level",
+          "narration": "Each click loads one level. Ask for a folder outside the share and the request fails.",
+          "mode": "sync"
+        },
+        {
+          "from": "link-resolver",
+          "to": "storage-layer",
+          "label": "streams a file",
+          "narration": "Opening a file checks it's inside the share, then streams it. Owner's credentials broken? The visitor just sees 'unavailable'.",
+          "mode": "stream"
+        }
+      ],
+      "keyFiles": [
+        "apps/api/src/byos_api/aliases/service.py — _subtree_folder_ids, public_folder_view, public_file_in_share",
+        "apps/api/src/byos_api/aliases/router.py — public_api_router (/public/...) and the redirect for folder links",
+        "apps/web/app/[username]/[slug]/page.tsx — the public folder page",
+        "apps/web/components/dashboard/folder-share-modal.tsx — folder share dialog"
+      ],
+      "status": "shipped"
+    },
+    {
+      "id": "expiring-shares",
+      "name": "Expiring share links",
+      "summary": "Links that self-destruct after 1 to 365 days.",
+      "description": "Make as many extra links to a file as you like. Each one counts its downloads, can be revoked any time, and returns 410 Gone once it expires. They always serve the latest version. Password-protected shares existed once and got removed.",
+      "underTheHood": "Each share is a random token with an expiry date and a download counter. Opening /s/{token} checks the date, bumps the counter and streams the file through the same code as permanent links. Revoking just deletes the row, and deleting it twice is fine.",
+      "steps": [
+        {
+          "from": "user",
+          "to": "web-app",
+          "label": "sets expiry",
+          "narration": "You pick how many days the link should live, anywhere from 1 to 365.",
+          "mode": "sync"
+        },
+        {
+          "from": "web-app",
+          "to": "link-resolver",
+          "label": "asks for a link",
+          "narration": "BYOS checks the file is yours and rolls a random token.",
+          "mode": "sync"
+        },
+        {
+          "from": "link-resolver",
+          "to": "postgres",
+          "label": "stores token",
+          "narration": "The share is saved with its expiry date and a download count of zero.",
+          "mode": "sync"
+        },
+        {
+          "from": "visitor",
+          "to": "link-resolver",
+          "label": "opens the link",
+          "narration": "Someone opens it. 120 requests per 60 s per IP, unless Redis is down, in which case nobody's counting.",
+          "mode": "sync"
+        },
+        {
+          "from": "link-resolver",
+          "to": "postgres",
+          "label": "checks expiry, counts",
+          "narration": "Expired? 410 Gone. Otherwise the download counter ticks up by one.",
+          "mode": "sync"
+        },
+        {
+          "from": "link-resolver",
+          "to": "visitor",
+          "label": "streams the file",
+          "narration": "The bytes come straight from the owner's storage, with the content hash as the ETag.",
+          "mode": "stream"
+        }
+      ],
+      "keyFiles": [
+        "apps/api/src/byos_api/shares/service.py — create, resolve, expiry, download counting",
+        "apps/api/src/byos_api/shares/router.py — owner CRUD and public GET /s/{token}",
+        "apps/web/components/dashboard/share-modal.tsx — permanent and expiring links UI"
+      ],
+      "status": "shipped"
+    },
+    {
+      "id": "drive-cleanup",
+      "name": "Missing files and duplicates",
+      "summary": "Catches files deleted behind BYOS's back, plus exact duplicates.",
+      "description": "Your bytes live in your storage, so you can delete them there without BYOS knowing. The Missing page scans every file and lists the ones that vanished. The Duplicates page groups identical files, whatever they're called, so you can bin the extras.",
+      "underTheHood": "The scan asks each provider whether the object still exists, without downloading it: get_messages on Telegram, head_object on S3, an asset lookup on GitHub. If Telegram says slow down, it stops and returns what it has. Duplicates come free, since every upload already recorded its SHA-256.",
+      "steps": [
+        {
+          "from": "user",
+          "to": "web-app",
+          "label": "runs a scan",
+          "narration": "On the Missing page you hit scan. Time to see what you deleted from Telegram and forgot about.",
+          "mode": "sync"
+        },
+        {
+          "from": "web-app",
+          "to": "metadata-engine",
+          "label": "check everything",
+          "narration": "BYOS loads every file along with the storage account it lives on.",
+          "mode": "sync"
+        },
+        {
+          "from": "metadata-engine",
+          "to": "storage-layer",
+          "label": "still there?",
+          "narration": "Each provider is asked whether the file is still there. Nothing gets downloaded.",
+          "mode": "sync"
+        },
+        {
+          "from": "storage-layer",
+          "to": "telegram",
+          "label": "get_messages",
+          "narration": "A message that's gone, or has no file attached, means missing. If Telegram rate-limits, the scan ends early with partial results.",
+          "mode": "sync"
+        },
+        {
+          "from": "metadata-engine",
+          "to": "postgres",
+          "label": "flags the missing",
+          "narration": "Missing files get flagged. Files that came back from the dead get unflagged.",
+          "mode": "sync"
+        },
+        {
+          "from": "metadata-engine",
+          "to": "web-app",
+          "label": "missing + duplicates",
+          "narration": "You get a list of missing files to clear out, and duplicates grouped by hash.",
+          "mode": "sync"
+        }
+      ],
+      "keyFiles": [
+        "apps/api/src/byos_api/files/service.py — verify_missing, find_missing, delete_missing, find_duplicates",
+        "apps/api/src/byos_api/streaming.py — the on_missing callback when a download hits FileNotFoundError",
+        "apps/web/components/dashboard/missing-panel.tsx — Missing page",
+        "apps/web/components/dashboard/duplicates-panel.tsx — Duplicates page"
+      ],
+      "status": "shipped"
+    },
+    {
+      "id": "drive-indexing",
+      "name": "Indexing, even of scans",
+      "summary": "Your own model reads every file, even scanned PDFs and photos.",
+      "description": "Index everything or tick specific files, and watch progress live. Scans and photos have no text, so those pages go to your own vision model. Normal PDFs cost nothing extra. Re-running only touches changed files, and index data unused for 30 days expires.",
+      "underTheHood": "pypdf pulls text out page by page. A page with under 80 characters is probably a scan, so it's rendered at 2x and sent for transcription, up to 20 per file. The first refusal stops that, since it usually means the model can't see. Text is cut into 1,800-character chunks with 200 overlap, then embedded.",
+      "steps": [
+        {
+          "from": "user",
+          "to": "web-app",
+          "label": "picks files",
+          "narration": "You pick what to index. The panel already knows which files are up to date.",
+          "mode": "sync"
+        },
+        {
+          "from": "web-app",
+          "to": "rag-engine",
+          "label": "start indexing",
+          "narration": "This needs a real login, not an API key, plus an LLM key with an embedding model.",
+          "mode": "stream"
+        },
+        {
+          "from": "rag-engine",
+          "to": "storage-layer",
+          "label": "downloads the file",
+          "narration": "Files that changed get downloaded from your storage. Anything over 25 MB is skipped, and you're told why.",
+          "mode": "stream"
+        },
+        {
+          "from": "rag-engine",
+          "to": "llm-client",
+          "label": "reads the scans",
+          "narration": "Near-empty pages get rendered and sent to your vision model. One refusal and it stops, so you don't pay for every page.",
+          "mode": "sync"
+        },
+        {
+          "from": "rag-engine",
+          "to": "llm-client",
+          "label": "embeds chunks",
+          "narration": "Text is sliced into 1,800-character chunks and embedded. If the provider says slow down, it waits as told and tries again.",
+          "mode": "sync"
+        },
+        {
+          "from": "rag-engine",
+          "to": "postgres",
+          "label": "saves the vectors",
+          "narration": "Old chunks for that file are thrown out and the new ones go in, one row per chunk.",
+          "mode": "sync"
+        },
+        {
+          "from": "rag-engine",
+          "to": "web-app",
+          "label": "streams progress",
+          "narration": "Progress lines trickle in as each file finishes, with the occasional 'warn' and a reason.",
+          "mode": "stream"
+        }
+      ],
+      "keyFiles": [
+        "apps/api/src/byos_api/ai/router.py — /ai/index stream, _index_one retries, _extract_owned",
+        "apps/api/src/byos_api/ai/extract.py — pypdf text extraction, sparse_pages, MAX_CHARS",
+        "apps/api/src/byos_api/ai/vision.py — page rendering with pypdfium2 and vision transcription",
+        "apps/api/src/byos_api/ai/semantic.py — ensure_embedded and the chunk cache",
+        "apps/web/components/byok/index-panel.tsx — file/folder picker with live progress"
+      ],
+      "status": "shipped"
+    },
+    {
+      "id": "ask-bao",
+      "name": "Ask your drive",
+      "summary": "Ask anything across your documents. Bao answers and shows receipts.",
+      "description": "Bao reads through your files before answering, with source chips under the reply. Click one and the PDF opens beside it with the quote highlighted. Ask something vague like \"my salary in June\" with two years of payslips, and it asks which June.",
+      "underTheHood": "Bao ends each answer with [source: file | exact words] lines, and citations.py keeps a quote only if those words really appear in that file. Made-up quotes quietly vanish. Retrieval then hands out each file's best chunk first, so a question spanning ten documents doesn't come back citing just one.",
+      "steps": [
+        {
+          "from": "user",
+          "to": "web-app",
+          "label": "asks a question",
+          "narration": "You type \"What was my net pay in June 2026?\" and hit enter. Nothing clever has happened yet.",
+          "mode": "sync"
+        },
+        {
+          "from": "web-app",
+          "to": "bao-agent",
+          "label": "question goes to Bao",
+          "narration": "Your API key is decrypted before the stream starts, so a bad key gets a clean error, not a mess halfway through.",
+          "mode": "stream"
+        },
+        {
+          "from": "bao-agent",
+          "to": "llm-client",
+          "label": "asks the model",
+          "narration": "Your model gets at least 8,192 output tokens, so a reasoning model can't think itself out of budget. It decides to search.",
+          "mode": "sync"
+        },
+        {
+          "from": "bao-agent",
+          "to": "rag-engine",
+          "label": "go search",
+          "narration": "The search query gets embedded with your key's embedding model. Optionally Bao writes a fake answer first (HyDE) and searches with that.",
+          "mode": "sync"
+        },
+        {
+          "from": "rag-engine",
+          "to": "postgres",
+          "label": "ranks chunk vectors",
+          "narration": "Every chunk you've indexed gets scored in numpy in one go. Getting picked also resets the chunk's expiry clock.",
+          "mode": "sync"
+        },
+        {
+          "from": "bao-agent",
+          "to": "web-app",
+          "label": "answer + receipts",
+          "narration": "The model answers and cites its sources. Any quote that isn't actually in the file gets thrown out before you see it.",
+          "mode": "stream"
+        },
+        {
+          "from": "web-app",
+          "to": "user",
+          "label": "highlights the quote",
+          "narration": "Click a source and the PDF opens next to the answer, with the quoted words highlighted right there on the page.",
+          "mode": "sync"
+        }
+      ],
+      "keyFiles": [
+        "apps/api/src/byos_api/ai/agent.py — run(): the tool loop, system prompt, clarify rules, separating reasoning from the answer",
+        "apps/api/src/byos_api/ai/rag.py — retrieve(): rewrite, HyDE, rerank, CRAG, _diversify",
+        "apps/api/src/byos_api/ai/semantic.py — chunk embedding cache and numpy cosine ranking",
+        "apps/api/src/byos_api/ai/citations.py — parsing [source: …] lines and verifying quotes",
+        "apps/web/components/byok/drive-chat.tsx — composer, slash commands, splitting the stream into events and text",
+        "apps/web/components/byok/pdf-view.tsx — pdf.js rendering with quote highlights"
+      ],
+      "status": "shipped"
+    },
+    {
+      "id": "reviewable-plans",
+      "name": "Agent plans you approve",
+      "summary": "Bao plans the cleanup. You decide what it's allowed to touch.",
+      "description": "Say \"tidy my downloads\" or run /organize. Bao drafts every move, rename and new folder, flags the scary ones, and draws your drive as it'll look afterwards. Four permission modes, from Read only to Full access, set how much it does without asking.",
+      "underTheHood": "Read tools run right away. Write tools may get queued, and queued writes are reported to the model as done, so it can plan \"make Finance, move 12 files in\" in one pass. Folders that don't exist yet are $new:N placeholders. The plan lives on the server, so Apply runs only what the model proposed.",
+      "steps": [
+        {
+          "from": "user",
+          "to": "web-app",
+          "label": "/organize",
+          "narration": "In Ask-first mode you run /organize, maybe with options like `rename by:year depth:1`.",
+          "mode": "sync"
+        },
+        {
+          "from": "web-app",
+          "to": "bao-agent",
+          "label": "organize request",
+          "narration": "Bao spots an organising job, grabs an inventory of your whole drive and gets 30 steps instead of the usual 10.",
+          "mode": "stream"
+        },
+        {
+          "from": "bao-agent",
+          "to": "metadata-engine",
+          "label": "reads the drive",
+          "narration": "Read tools run straight away. A file called scan_0032.pdf gets judged by its contents, since its name is no help at all.",
+          "mode": "sync"
+        },
+        {
+          "from": "bao-agent",
+          "to": "llm-client",
+          "label": "proposes changes",
+          "narration": "The model says \"create Finance, move these in\". In Ask mode nothing actually happens. Bao nods and writes it down.",
+          "mode": "sync"
+        },
+        {
+          "from": "bao-agent",
+          "to": "web-app",
+          "label": "plan + tree",
+          "narration": "The plan is saved as pending and streamed to you, along with a tree of what your drive will look like after.",
+          "mode": "stream"
+        },
+        {
+          "from": "web-app",
+          "to": "bao-agent",
+          "label": "you hit Apply",
+          "narration": "You press Apply. The server runs its own stored copy of the plan, so the browser can't slip in extra actions.",
+          "mode": "sync"
+        },
+        {
+          "from": "bao-agent",
+          "to": "metadata-engine",
+          "label": "runs each action",
+          "narration": "Each action runs through the same code as the regular Drive UI. It's all metadata, so nothing moves in Telegram.",
+          "mode": "sync"
+        }
+      ],
+      "keyFiles": [
+        "apps/api/src/byos_api/ai/modes.py — the Mode enum (read_only, ask, auto, full) and runs_now",
+        "apps/api/src/byos_api/ai/tools.py — READ/WRITE tool schemas, $new references, apply_action",
+        "apps/api/src/byos_api/ai/agent.py — apply_order, save_plan, apply",
+        "apps/api/src/byos_api/ai/organize.py — inventory, brief, excluded_tools, preview tree, fix_brief",
+        "apps/api/src/byos_api/db/models/ai_action_plan.py — the stored plan model",
+        "apps/web/components/byok/plan-card.tsx — plan list with apply, discard and revise",
+        "apps/web/components/byok/plan-tree.tsx — diagram of the drive after the plan"
+      ],
+      "status": "shipped"
+    },
+    {
+      "id": "document-chat",
+      "name": "Chat with one file",
+      "summary": "Ask questions about the file you're looking at.",
+      "description": "Preview a PDF, text file or image and an AI panel sits right next to it. Pick a key and a prompt and chat with that one file. These chats aren't stored on BYOS servers; they live in your browser. Long documents work too.",
+      "underTheHood": "The server keeps no state: the browser resends up to 20 turns of history every time. Short documents go into the prompt whole, up to 120,000 characters. Longer ones get embedded on the spot and only the 6 most relevant chunks are sent. No embedding model? It falls back to plain word overlap.",
+      "steps": [
+        {
+          "from": "user",
+          "to": "web-app",
+          "label": "asks about a file",
+          "narration": "You ask the side panel a question. Earlier messages come back out of localStorage.",
+          "mode": "sync"
+        },
+        {
+          "from": "web-app",
+          "to": "rag-engine",
+          "label": "question + history",
+          "narration": "Your question, the history, and your chosen key and prompt all go to the API together.",
+          "mode": "stream"
+        },
+        {
+          "from": "rag-engine",
+          "to": "storage-layer",
+          "label": "downloads the file",
+          "narration": "The file comes down from your storage (25 MB max) and its text is pulled out, scans included.",
+          "mode": "stream"
+        },
+        {
+          "from": "rag-engine",
+          "to": "llm-client",
+          "label": "picks relevant chunks",
+          "narration": "Long document? Only the 6 most relevant chunks make the cut. No embeddings means old-school word matching instead.",
+          "mode": "sync"
+        },
+        {
+          "from": "llm-client",
+          "to": "llm-provider",
+          "label": "asks your model",
+          "narration": "Your prompt, the document bits and your question go to your provider's chat endpoint, streaming on.",
+          "mode": "stream"
+        },
+        {
+          "from": "rag-engine",
+          "to": "web-app",
+          "label": "streams tokens",
+          "narration": "Tokens are passed straight through. The panel renders Markdown as it arrives and saves the chat locally.",
+          "mode": "stream"
+        }
+      ],
+      "keyFiles": [
+        "apps/api/src/byos_api/ai/router.py — /ai/chat, /ai/summarize, _load_text",
+        "apps/api/src/byos_api/ai/retrieval.py — chunk_text and the lexical top_chunks fallback",
+        "apps/web/components/dashboard/preview-modal.tsx — picks a viewer by kind",
+        "apps/web/components/dashboard/ai-panel.tsx — preview-side chat with a localStorage history"
+      ],
+      "status": "shipped"
+    },
+    {
+      "id": "developer-platform",
+      "name": "API keys and webhooks",
+      "summary": "Script your drive with scoped API keys and signed webhooks.",
+      "description": "Create keys like byosk_<prefix>_<secret>, shown once, with read or write scopes per resource and an optional expiry. Webhooks fire when files are created, replaced or deleted, signed with HMAC-SHA256. A leaked key can't mint more keys or read your storage credentials.",
+      "underTheHood": "Only a hash of each key is stored. Webhook URLs pointing at private or loopback IPs are refused, and redirects are never followed, so nobody can bounce a delivery to an internal address. Delivery is fire-and-forget: one asyncio task, a 5 s timeout, no retries. If your endpoint is down at that moment, tough luck.",
+      "steps": [
+        {
+          "from": "user",
+          "to": "web-app",
+          "label": "creates a key",
+          "narration": "You name a key, tick scopes like files:write and maybe set an expiry. The max is 3,650 days. Optimistic.",
+          "mode": "sync"
+        },
+        {
+          "from": "web-app",
+          "to": "auth-service",
+          "label": "saves the key",
+          "narration": "Only the hash is stored, and you see the full key exactly once. Copy it now.",
+          "mode": "sync"
+        },
+        {
+          "from": "integrations",
+          "to": "api-gateway",
+          "label": "Bearer byosk_…",
+          "narration": "Your script calls POST /files with the key in the Authorization header.",
+          "mode": "sync"
+        },
+        {
+          "from": "api-gateway",
+          "to": "auth-service",
+          "label": "checks key + scope",
+          "narration": "The key is found by prefix and its hash compared. A POST needs files:write, and Redis counts calls per key.",
+          "mode": "sync"
+        },
+        {
+          "from": "api-gateway",
+          "to": "metadata-engine",
+          "label": "runs the upload",
+          "narration": "From here it's the same upload path as the web app. The API doesn't care who's asking.",
+          "mode": "sync"
+        },
+        {
+          "from": "metadata-engine",
+          "to": "webhook-dispatcher",
+          "label": "emit file.created",
+          "narration": "A file.created event gets handed to a background task. The upload doesn't wait around for it.",
+          "mode": "event"
+        },
+        {
+          "from": "webhook-dispatcher",
+          "to": "integrations",
+          "label": "signed POST",
+          "narration": "Your webhook gets a signed POST with a 5 s timeout. If that fails, it's logged and forgotten.",
+          "mode": "async"
+        }
+      ],
+      "keyFiles": [
+        "apps/api/src/byos_api/auth/dependencies.py — Principal, SessionUser, require_scope, api_key_rate_limit",
+        "apps/api/src/byos_api/apikeys/service.py — key format, hashing, ALL_SCOPES, MAX_ACTIVE_KEYS",
+        "apps/api/src/byos_api/webhooks/service.py — SSRF-guarded URL validation, MAX_WEBHOOKS",
+        "apps/api/src/byos_api/webhooks/dispatcher.py — signed, fire-and-forget delivery",
+        "packages/api-client/src/index.ts — the ByosClient TypeScript SDK",
+        "docs/DEVELOPERS.md — developer guide with the signature verification snippet"
+      ],
+      "status": "shipped"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "user",
+      "label": "You",
+      "zone": "client",
+      "kind": "actor",
+      "tech": [
+        "Desktop or phone browser"
+      ],
+      "summary": "You. The one with the files and the LLM key.",
+      "details": "You own the storage accounts and the LLM key. Everything you do goes through the web app, after signing in with Telegram or a password.",
+      "keyFiles": [],
+      "interesting": null,
+      "inferred": false
+    },
+    {
+      "id": "visitor",
+      "label": "Link Visitor",
+      "zone": "client",
+      "kind": "actor",
+      "tech": [
+        "Any browser or HTTP client"
+      ],
+      "summary": "Anyone you sent a link to. No account needed.",
+      "details": "Opens /{username}/{slug} or /s/{token}. Files stream inline and folder links bounce to the web app. Every public route is rate-limited per IP.",
+      "keyFiles": [
+        "apps/web/app/[username]/[slug]/page.tsx — the public folder page"
+      ],
+      "interesting": null,
+      "inferred": false
+    },
+    {
+      "id": "web-app",
+      "label": "Web App",
+      "zone": "client",
+      "kind": "ui",
+      "tech": [
+        "Next.js 15 (App Router)",
+        "React 19",
+        "TypeScript",
+        "Tailwind CSS",
+        "TanStack Query",
+        "pdfjs-dist",
+        "react-markdown"
+      ],
+      "summary": "The Drive, the Bao chat, settings and public folder pages.",
+      "details": "A client-rendered Next.js app that talks to the API through a typed SDK. The access token lives only in React state, and a refresh cookie brings it back on reload. Preferences like theme and click sounds stay on your device.",
+      "keyFiles": [
+        "apps/web/app/(app)/dashboard/page.tsx — Drive",
+        "apps/web/app/(app)/byok/page.tsx — Bao chat page",
+        "apps/web/components/byok/drive-chat.tsx — composer, slash commands, stream handling",
+        "apps/web/lib/auth-context.tsx — token lifecycle",
+        "packages/api-client/src/index.ts — typed ByosClient SDK"
+      ],
+      "interesting": "Bao's answers and control events share one plain-text stream, split by the ASCII record separator. No WebSockets needed, and sources survive a reload.",
+      "inferred": false
+    },
+    {
+      "id": "integrations",
+      "label": "Your Scripts",
+      "zone": "client",
+      "kind": "external",
+      "tech": [
+        "curl / scripts / CI",
+        "@byos/api-client",
+        "HMAC-SHA256 verification"
+      ],
+      "summary": "Your scripts, calling the API with byosk_ keys.",
+      "details": "Sends `Bearer byosk_<prefix>_<secret>` and gets only what the key's scopes allow, at a per-key rate limit. Can also receive signed file events, which it should verify before trusting.",
+      "keyFiles": [
+        "docs/DEVELOPERS.md — API reference, scopes, webhook verification"
+      ],
+      "interesting": null,
+      "inferred": false
+    },
+    {
+      "id": "api-gateway",
+      "label": "API Gateway",
+      "zone": "backend",
+      "kind": "api",
+      "tech": [
+        "FastAPI",
+        "Uvicorn",
+        "Pydantic v2",
+        "pydantic-settings"
+      ],
+      "summary": "The FastAPI app. Every request walks through here.",
+      "details": "Handles auth, scope checks, rate limits and error mapping. When your storage credentials die, it says which provider and account, so the app knows exactly what to ask you to fix. API docs are switched off in production.",
+      "keyFiles": [
+        "apps/api/src/byos_api/main.py — app factory, error handlers, the daily cleanup task",
+        "apps/api/src/byos_api/core/ratelimit.py — fixed-window limiter that fails open",
+        "apps/api/src/byos_api/core/cache.py — best-effort Redis JSON cache",
+        "apps/api/src/byos_api/core/config.py — all settings and defaults"
+      ],
+      "interesting": "It's on every request, but the walkthroughs only draw it when it does real work. Otherwise it would be on every single arrow.",
+      "inferred": false
+    },
+    {
+      "id": "auth-service",
+      "label": "Auth & Keys",
+      "zone": "backend",
+      "kind": "service",
+      "tech": [
+        "Telethon",
+        "PyJWT (HS256)",
+        "argon2-cffi",
+        "cryptography (Fernet)"
+      ],
+      "summary": "Logins, sessions and API keys. The bouncer.",
+      "details": "Turns each request into a full session or a scoped API key. Runs the Telegram login, hands out 15-minute access tokens and 30-day refresh tokens that rotate on every use. Security events get logged with IPs hashed.",
+      "keyFiles": [
+        "apps/api/src/byos_api/auth/telegram.py — ticket-based MTProto login",
+        "apps/api/src/byos_api/auth/dependencies.py — Principal, SessionUser, require_scope",
+        "apps/api/src/byos_api/core/security.py — JWT, Argon2, refresh-token hashing",
+        "apps/api/src/byos_api/apikeys/service.py — byosk_ keys",
+        "apps/api/src/byos_api/audit/recorder.py — audit writer that never raises"
+      ],
+      "interesting": "A password login never talks to Telegram, so it checks your Telegram session is still alive first. Dead session? You get a fresh code.",
+      "inferred": false
+    },
+    {
+      "id": "metadata-engine",
+      "label": "Metadata Engine",
+      "zone": "backend",
+      "kind": "service",
+      "tech": [
+        "SQLAlchemy 2.0 async",
+        "asyncpg",
+        "PostgreSQL full-text search",
+        "pg_trgm"
+      ],
+      "summary": "Everything about your files, except the files.",
+      "details": "Folders, versions, tags, search, duplicates and missing files all live here. It picks which storage gets an upload, hands the bytes to the adapters and cleans up if saving fails. Bao's write tools call this same code.",
+      "keyFiles": [
+        "apps/api/src/byos_api/files/router.py — file endpoints",
+        "apps/api/src/byos_api/files/service.py — search, versions, verify_missing, resolve_upload_target",
+        "apps/api/src/byos_api/folders/service.py — folder tree operations, FOLDER_COLORS",
+        "apps/api/src/byos_api/ai/nl_search.py — query parser"
+      ],
+      "interesting": "The duplicate check waits until after upload, since the hash isn't known until the bytes are read. So a retried upload gets stored, spotted and deleted.",
+      "inferred": false
+    },
+    {
+      "id": "link-resolver",
+      "label": "Links Service",
+      "zone": "backend",
+      "kind": "api",
+      "tech": [
+        "FastAPI StreamingResponse",
+        "RedirectResponse"
+      ],
+      "summary": "Permanent links, shared folders and expiring shares.",
+      "details": "Owners create links here. Visitors use them without logging in, at 120 requests per 60 s per IP. Files stream inline, folder links redirect to the web app, and expired shares return 410.",
+      "keyFiles": [
+        "apps/api/src/byos_api/aliases/router.py — owner CRUD, public resolver, /public folder API",
+        "apps/api/src/byos_api/shares/router.py — share CRUD and GET /s/{token}",
+        "apps/api/src/byos_api/streaming.py — stream_object"
+      ],
+      "interesting": "The ETag is the content hash. Same file as last time? You get a 304 and Telegram never even hears about it.",
+      "inferred": false
+    },
+    {
+      "id": "storage-layer",
+      "label": "Storage Adapters",
+      "zone": "backend",
+      "kind": "service",
+      "tech": [
+        "Telethon (MTProto)",
+        "httpx",
+        "boto3/botocore",
+        "SpooledTemporaryFile"
+      ],
+      "summary": "One plug shape, three sockets: Telegram, GitHub and S3.",
+      "details": "Each adapter translates its backend's errors into two plain types, one of which means 'your credentials are dead'. Credentials are stored encrypted. Disconnecting wipes them but keeps the record, so files come back if you reconnect.",
+      "keyFiles": [
+        "apps/api/src/byos_api/storage/base.py — protocol and error types",
+        "apps/api/src/byos_api/storage/registry.py — provider registry",
+        "apps/api/src/byos_api/storage/telegram.py — TelegramClientPool",
+        "apps/api/src/byos_api/storage/github.py — release assets",
+        "apps/api/src/byos_api/storage/s3.py — S3-compatible buckets",
+        "apps/api/src/byos_api/providers/accounts.py — account lifecycle, flag_rejected"
+      ],
+      "interesting": "There's no replace method. Telegram and GitHub can't edit uploads anyway, so a replace is upload new, add a version, move a pointer. Same on every backend.",
+      "inferred": false
+    },
+    {
+      "id": "webhook-dispatcher",
+      "label": "Webhook Dispatcher",
+      "zone": "backend",
+      "kind": "worker",
+      "tech": [
+        "asyncio tasks",
+        "httpx",
+        "HMAC-SHA256"
+      ],
+      "summary": "Sends signed file events without holding up your request.",
+      "details": "A background task POSTs one signed JSON body to every matching webhook, with a 5 s timeout. Failures are logged and dropped, and a restart loses anything pending. A proper queue (arq) is installed, but nothing runs it yet.",
+      "keyFiles": [
+        "apps/api/src/byos_api/webhooks/dispatcher.py — emit, _fanout, _deliver",
+        "apps/api/src/byos_api/webhooks/service.py — URL validation"
+      ],
+      "interesting": "Redirects are never followed. Otherwise a URL that passed the private-IP check could just redirect the delivery to an internal address.",
+      "inferred": false
+    },
+    {
+      "id": "bao-agent",
+      "label": "Bao Agent",
+      "zone": "backend",
+      "kind": "service",
+      "tech": [
+        "OpenAI-style tool calling",
+        "SQLAlchemy JSONB"
+      ],
+      "summary": "The AI agent. Answers questions, drafts plans, waits for your OK.",
+      "details": "Runs each chat turn as up to 10 model steps, or 30 when organising. Read tools run right away. Write tools run or get queued depending on your permission mode. Plans can be applied, discarded, revised or fixed.",
+      "keyFiles": [
+        "apps/api/src/byos_api/ai/agent.py — run(), apply_order, save_plan, apply",
+        "apps/api/src/byos_api/ai/tools.py — tool schemas, run_read, apply_action",
+        "apps/api/src/byos_api/ai/modes.py — Mode and runs_now",
+        "apps/api/src/byos_api/ai/organize.py — /organize brief, inventory, preview tree",
+        "apps/api/src/byos_api/ai/router.py — /ai/agent/chat and /ai/agent/plans/*"
+      ],
+      "interesting": "Plans live on the server, so Apply can only run what the model proposed. In Auto mode a plan can be half done, the rest waiting on you.",
+      "inferred": false
+    },
+    {
+      "id": "rag-engine",
+      "label": "Index & Retrieval",
+      "zone": "backend",
+      "kind": "service",
+      "tech": [
+        "pypdf",
+        "pypdfium2",
+        "Pillow",
+        "numpy"
+      ],
+      "summary": "Reads your files, embeds them, finds the right bits later.",
+      "details": "Pulls text out page by page, sends nearly blank pages to your vision model, then chunks and embeds everything. At question time it can rewrite the query, rerank, and search again if results look weak. It also fact-checks Bao's quotes.",
+      "keyFiles": [
+        "apps/api/src/byos_api/ai/extract.py — text extraction with pypdf",
+        "apps/api/src/byos_api/ai/vision.py — page rendering and transcription",
+        "apps/api/src/byos_api/ai/semantic.py — embedding cache and cosine ranking",
+        "apps/api/src/byos_api/ai/rag.py — retrieval strategies",
+        "apps/api/src/byos_api/ai/citations.py — quote verification"
+      ],
+      "interesting": "There's no vector database. Embeddings are plain float arrays in Postgres and numpy does one big multiply per query. The stack stays at exactly one database.",
+      "inferred": false
+    },
+    {
+      "id": "llm-client",
+      "label": "LLM Client",
+      "zone": "backend",
+      "kind": "service",
+      "tech": [
+        "httpx (pooled AsyncClient)",
+        "OpenAI Chat Completions API",
+        "OpenAI Responses API",
+        "Embeddings API"
+      ],
+      "summary": "Talks to whatever AI provider your key points at.",
+      "details": "Speaks the OpenAI-compatible format to any base URL. When a provider rejects a parameter, it adjusts and retries up to 3 times, then remembers the fix. Bad keys, dead endpoints and rate limits each get their own error.",
+      "keyFiles": [
+        "apps/api/src/byos_api/ai/llm.py — the whole client",
+        "apps/api/tests/test_llm_params.py — tests for adapting rejected parameters"
+      ],
+      "interesting": "Nobody documents which reasoning-effort levels a model accepts. So the client reads the allowed values out of the provider's error message and picks the closest one.",
+      "inferred": false
+    },
+    {
+      "id": "postgres",
+      "label": "PostgreSQL",
+      "zone": "data",
+      "kind": "database",
+      "tech": [
+        "PostgreSQL 16",
+        "pg_trgm",
+        "pgcrypto",
+        "citext",
+        "Alembic",
+        "asyncpg"
+      ],
+      "summary": "The source of truth. Everything except the bytes.",
+      "details": "19 tables across 25 migrations, covering users, files, versions, links, keys, AI chats, chunks and plans. Files get a full-text index plus a trigram index on names. Production runs on Supabase in Mumbai.",
+      "keyFiles": [
+        "apps/api/src/byos_api/db/models/ — ORM models",
+        "apps/api/alembic/versions/ — migrations 0001_initial through 0025_share_drop_password",
+        "apps/api/src/byos_api/core/db.py — engine and prepare_asyncpg"
+      ],
+      "interesting": "The deploy notes say the API-to-database round trip is the real cost per request, so every hosting option is picked by how close it sits to this database.",
+      "inferred": false
+    },
+    {
+      "id": "redis",
+      "label": "Redis",
+      "zone": "data",
+      "kind": "cache",
+      "tech": [
+        "Redis 7",
+        "redis-py asyncio"
+      ],
+      "summary": "Optional. Rate limits and a tiny cache.",
+      "details": "Counts requests per IP or key in fixed windows and caches the storage overview for 30 s. Runs locally in docker-compose. Production skips it for now, so rate limits are basically off there.",
+      "keyFiles": [
+        "apps/api/src/byos_api/core/ratelimit.py — limiter",
+        "apps/api/src/byos_api/core/cache.py — cache"
+      ],
+      "interesting": "Everything fails open. If Redis dies you lose rate limiting and caching, and the API carries on as if nothing happened.",
+      "inferred": false
+    },
+    {
+      "id": "telegram",
+      "label": "Telegram",
+      "zone": "user-storage",
+      "kind": "external",
+      "tech": [
+        "MTProto",
+        "Saved Messages"
+      ],
+      "summary": "Your Telegram account. Your login and your default storage.",
+      "details": "Files go to Saved Messages as documents and are fetched by message id on every download. Up to 2 GB per file, 4 GB with Premium. Hit Telegram's flood limits and you get a polite 'try again in N s'.",
+      "keyFiles": [
+        "apps/api/src/byos_api/storage/telegram.py",
+        "apps/api/src/byos_api/auth/telegram.py"
+      ],
+      "interesting": "Log out every session from the Telegram app and BYOS gets logged out too. It notices, drops its client and asks you to sign in again.",
+      "inferred": false
+    },
+    {
+      "id": "github",
+      "label": "GitHub Releases",
+      "zone": "user-storage",
+      "kind": "external",
+      "tech": [
+        "GitHub REST API",
+        "uploads.github.com"
+      ],
+      "summary": "Files stored as release assets in a repo you own.",
+      "details": "BYOS creates the repo (private by default) and uploads files as assets on a daily prerelease. Why not commits? A committed file caps out at 100 MB, bloats the history and never truly goes away.",
+      "keyFiles": [
+        "apps/api/src/byos_api/storage/github.py"
+      ],
+      "interesting": "GitHub sends your token's expiry date on every response. BYOS reads it so it can warn you before a fine-grained token dies.",
+      "inferred": false
+    },
+    {
+      "id": "s3",
+      "label": "S3 Bucket",
+      "zone": "user-storage",
+      "kind": "storage",
+      "tech": [
+        "S3 API",
+        "AWS S3",
+        "Cloudflare R2",
+        "Backblaze B2",
+        "MinIO"
+      ],
+      "summary": "Any S3-compatible bucket: AWS, R2, B2, MinIO.",
+      "details": "Objects go to <prefix><uuid>/<safe filename> through boto3 in worker threads, with up to 3 retries. A dead key and a key missing one permission get different error messages, which saves some head-scratching.",
+      "keyFiles": [
+        "apps/api/src/byos_api/storage/s3.py"
+      ],
+      "interesting": null,
+      "inferred": false
+    },
+    {
+      "id": "llm-provider",
+      "label": "Your LLM",
+      "zone": "third-party",
+      "kind": "external",
+      "tech": [
+        "OpenAI",
+        "OpenRouter",
+        "Gemini",
+        "Groq",
+        "Together",
+        "self-hosted"
+      ],
+      "summary": "Your own OpenAI-compatible endpoint, running on your own key.",
+      "details": "Does chat, streaming, tool calls, embeddings, vision transcription and model listing. Your key is stored encrypted and only decrypted to make these calls.",
+      "keyFiles": [
+        "apps/api/src/byos_api/ai/llm.py"
+      ],
+      "interesting": null,
+      "inferred": false
+    },
+    {
+      "id": "keep-warm",
+      "label": "Keep-warm Cron",
+      "zone": "third-party",
+      "kind": "worker",
+      "tech": [
+        "Google Apps Script"
+      ],
+      "summary": "A cron that pokes the servers so they don't fall asleep.",
+      "details": "A Google Apps Script pings the web app and the API every 5 minutes, because Render's free tier naps after about 15 idle minutes. Its own notes admit two services need about 1,490 instance-hours a month, against 750 free.",
+      "keyFiles": [
+        "infra/apps-script/keep-warm.gs — pinger and setup notes"
+      ],
+      "interesting": null,
+      "inferred": false
+    }
+  ],
+  "zones": [
+    {
+      "id": "client",
+      "label": "Client",
+      "description": "You, your visitors, the web app and your scripts."
+    },
+    {
+      "id": "backend",
+      "label": "BYOS API",
+      "description": "One FastAPI app, with Bao living inside it."
+    },
+    {
+      "id": "data",
+      "label": "Data",
+      "description": "Postgres holds everything but the bytes. Redis is optional."
+    },
+    {
+      "id": "user-storage",
+      "label": "Your Storage",
+      "description": "Where your bytes actually live. Accounts you own."
+    },
+    {
+      "id": "third-party",
+      "label": "Third-party",
+      "description": "Your LLM endpoint and a cron that keeps things awake."
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "from": "user",
+      "to": "web-app",
+      "label": "uses the app",
+      "protocol": "Browser UI",
+      "mode": "sync",
+      "payload": "Clicks, drag-and-drop files, chat messages, Cmd+K queries",
+      "details": "Works on desktop and phone. On phones the Drive gets a bottom tab bar."
+    },
+    {
+      "id": "e2",
+      "from": "web-app",
+      "to": "api-gateway",
+      "label": "REST + Bearer JWT",
+      "protocol": "HTTP",
+      "mode": "sync",
+      "payload": "JSON, or multipart/form-data for uploads; Authorization: Bearer <access JWT>",
+      "details": "Sends the refresh cookie along. On a 401 it refreshes once and tries again."
+    },
+    {
+      "id": "e3",
+      "from": "api-gateway",
+      "to": "auth-service",
+      "label": "resolves principal",
+      "protocol": "function call",
+      "mode": "sync",
+      "payload": "Bearer credential → Principal{user, auth_type, scopes, key_prefix}",
+      "details": "byosk_ keys get hashed and looked up. Anything else is treated as a JWT."
+    },
+    {
+      "id": "e4",
+      "from": "web-app",
+      "to": "auth-service",
+      "label": "/auth/* login",
+      "protocol": "HTTP",
+      "mode": "sync",
+      "payload": "{phone} / {ticket, code} / {ticket, password} / {identifier, password}; refresh cookie",
+      "details": "20 requests per 60 s per IP. Hands back a token and a fresh cookie."
+    },
+    {
+      "id": "e5",
+      "from": "auth-service",
+      "to": "telegram",
+      "label": "send code, sign in",
+      "protocol": "MTProto",
+      "mode": "sync",
+      "payload": "send_code_request(phone), sign_in(code | password), get_me()",
+      "details": "A fresh Telethon client for every step. Flood limits become a 429."
+    },
+    {
+      "id": "e6",
+      "from": "auth-service",
+      "to": "postgres",
+      "label": "users, tokens, keys",
+      "protocol": "SQL",
+      "mode": "sync",
+      "payload": "users, storage_accounts, refresh_tokens, api_keys, audit_logs",
+      "details": "Account and storage are created in one transaction. Audit logs use their own session."
+    },
+    {
+      "id": "e7",
+      "from": "api-gateway",
+      "to": "metadata-engine",
+      "label": "files and folders",
+      "protocol": "function call",
+      "mode": "sync",
+      "payload": "Calls scoped to the owner, e.g. upload, search, move, verify",
+      "details": "Every route checks scopes and the per-key rate limit first."
+    },
+    {
+      "id": "e8",
+      "from": "web-app",
+      "to": "metadata-engine",
+      "label": "/files, /folders",
+      "protocol": "HTTP",
+      "mode": "sync",
+      "payload": "Drive operations from the dashboard",
+      "details": "Really goes through the gateway. The walkthroughs just skip drawing it."
+    },
+    {
+      "id": "e9",
+      "from": "metadata-engine",
+      "to": "postgres",
+      "label": "metadata + search",
+      "protocol": "SQL",
+      "mode": "sync",
+      "payload": "files, file_versions, folders, tags; recursive CTEs; websearch_to_tsquery + ILIKE",
+      "details": "An upload's rows and its version pointer are saved in one commit."
+    },
+    {
+      "id": "e10",
+      "from": "metadata-engine",
+      "to": "storage-layer",
+      "label": "upload / download",
+      "protocol": "function call",
+      "mode": "stream",
+      "payload": "AsyncIterator[bytes] ⇄ StoredObjectRef{provider, locator, size, checksum}",
+      "details": "Uploads move in 1 MiB chunks. Errors come back tagged with which account broke."
+    },
+    {
+      "id": "e11",
+      "from": "storage-layer",
+      "to": "telegram",
+      "label": "Saved Messages I/O",
+      "protocol": "MTProto",
+      "mode": "stream",
+      "payload": "send_file to 'me'; get_messages + iter_download; delete_messages",
+      "details": "One pooled client per session. A revoked session gets kicked out of the pool."
+    },
+    {
+      "id": "e12",
+      "from": "storage-layer",
+      "to": "github",
+      "label": "release assets",
+      "protocol": "HTTP",
+      "mode": "sync",
+      "payload": "Asset upload to uploads.github.com; asset GET following the redirect",
+      "details": "Release ids are cached per repo per day. A 401 means the token got revoked."
+    },
+    {
+      "id": "e13",
+      "from": "storage-layer",
+      "to": "s3",
+      "label": "put / get object",
+      "protocol": "HTTP (S3 API)",
+      "mode": "sync",
+      "payload": "upload_fileobj, get_object, head_object, delete_object",
+      "details": "boto3 in worker threads, retrying up to 3 times."
+    },
+    {
+      "id": "e14",
+      "from": "storage-layer",
+      "to": "postgres",
+      "label": "storage_accounts",
+      "protocol": "SQL",
+      "mode": "sync",
+      "payload": "Encrypted credentials and config; status updates",
+      "details": "Flagging a broken account uses its own session."
+    },
+    {
+      "id": "e15",
+      "from": "web-app",
+      "to": "link-resolver",
+      "label": "manage links",
+      "protocol": "HTTP",
+      "mode": "sync",
+      "payload": "POST/GET/PATCH/DELETE /aliases and /shares; GET /public/... from the folder page",
+      "details": "API keys need the aliases scope. Public routes get the per-IP limit."
+    },
+    {
+      "id": "e16",
+      "from": "visitor",
+      "to": "link-resolver",
+      "label": "opens a link",
+      "protocol": "HTTP",
+      "mode": "stream",
+      "payload": "GET /{username}/{slug}, GET /s/{token}",
+      "details": "Can return 200, 304, 302 for folders, 404, or 410 for an expired share."
+    },
+    {
+      "id": "e17",
+      "from": "visitor",
+      "to": "web-app",
+      "label": "shared folder page",
+      "protocol": "HTTP",
+      "mode": "sync",
+      "payload": "GET /{username}/{slug} on the web app after the API's 302",
+      "details": "Links that don't exist get the 404 page."
+    },
+    {
+      "id": "e18",
+      "from": "link-resolver",
+      "to": "postgres",
+      "label": "resolve links",
+      "protocol": "SQL",
+      "mode": "sync",
+      "payload": "aliases, shares, files, file_versions, folders",
+      "details": "Shares count their downloads here. A missing file gets flagged on the way."
+    },
+    {
+      "id": "e19",
+      "from": "link-resolver",
+      "to": "storage-layer",
+      "label": "stream_object",
+      "protocol": "function call",
+      "mode": "stream",
+      "payload": "First chunk fetched before headers, then a StreamingResponse with the hash as ETag",
+      "details": "With public=True, broken owner credentials show the visitor a 503."
+    },
+    {
+      "id": "e20",
+      "from": "link-resolver",
+      "to": "redis",
+      "label": "public rate limit",
+      "protocol": "RESP",
+      "mode": "sync",
+      "payload": "INCR rl:alias:{ip}, rl:share:{ip}",
+      "details": "Fixed 60 s window. If Redis fails, requests go through anyway."
+    },
+    {
+      "id": "e21",
+      "from": "api-gateway",
+      "to": "redis",
+      "label": "limits + cache",
+      "protocol": "RESP",
+      "mode": "sync",
+      "payload": "INCR rl:auth|apikey:*; GET/SET analytics:overview:{user} EX 30",
+      "details": "Fails open. No Redis, no problem."
+    },
+    {
+      "id": "e22",
+      "from": "web-app",
+      "to": "bao-agent",
+      "label": "/ai/agent/*",
+      "protocol": "HTTP (chunked text/plain)",
+      "mode": "stream",
+      "payload": "{conversation_id, key_id, message, mode, strategies, organize?, revises?, fixes?}; plans/{id}/apply|discard",
+      "details": "Control events are JSON tucked into the answer text behind a record-separator byte."
+    },
+    {
+      "id": "e23",
+      "from": "bao-agent",
+      "to": "llm-client",
+      "label": "chat_tools steps",
+      "protocol": "function call",
+      "mode": "sync",
+      "payload": "messages + tool schemas → ToolTurn{content, tool_calls}",
+      "details": "Not streamed, because every provider chops up tool-call deltas differently."
+    },
+    {
+      "id": "e24",
+      "from": "bao-agent",
+      "to": "metadata-engine",
+      "label": "read and write tools",
+      "protocol": "function call",
+      "mode": "sync",
+      "payload": "list_files, list_folders, create_folder, move_file, …",
+      "details": "Writes use the exact same functions as the REST API."
+    },
+    {
+      "id": "e25",
+      "from": "bao-agent",
+      "to": "rag-engine",
+      "label": "search_content",
+      "protocol": "function call",
+      "mode": "sync",
+      "payload": "{query, limit ≤ 20} → [(file_id, name, chunk)]",
+      "details": "Same retrieval pipeline as RAG chat, with this turn's add-ons."
+    },
+    {
+      "id": "e26",
+      "from": "bao-agent",
+      "to": "postgres",
+      "label": "plans and messages",
+      "protocol": "SQL",
+      "mode": "sync",
+      "payload": "ai_action_plans, ai_conversations, ai_chat_messages",
+      "details": "A plan only moves forward: pending, then applied or discarded."
+    },
+    {
+      "id": "e27",
+      "from": "web-app",
+      "to": "rag-engine",
+      "label": "/ai/index, /ai/chat",
+      "protocol": "HTTP (chunked text/plain)",
+      "mode": "stream",
+      "payload": "Index requests and single-document chat",
+      "details": "Indexing needs a real login. API keys are turned away."
+    },
+    {
+      "id": "e28",
+      "from": "rag-engine",
+      "to": "storage-layer",
+      "label": "downloads for extraction",
+      "protocol": "function call",
+      "mode": "stream",
+      "payload": "Current version bytes (up to 25 MB)",
+      "details": "Files already embedded at their current version are skipped."
+    },
+    {
+      "id": "e29",
+      "from": "rag-engine",
+      "to": "llm-client",
+      "label": "embed / transcribe",
+      "protocol": "function call",
+      "mode": "sync",
+      "payload": "Chunks → vectors; page PNGs → text; rewrite, HyDE and rerank prompts",
+      "details": "Retries up to 3 times on a 429 or a network hiccup."
+    },
+    {
+      "id": "e30",
+      "from": "rag-engine",
+      "to": "postgres",
+      "label": "ai_file_chunks",
+      "protocol": "SQL",
+      "mode": "sync",
+      "payload": "Chunk rows with REAL[] embeddings",
+      "details": "Ranking happens in numpy, not in the database."
+    },
+    {
+      "id": "e31",
+      "from": "llm-client",
+      "to": "llm-provider",
+      "label": "OpenAI-compatible calls",
+      "protocol": "HTTPS",
+      "mode": "stream",
+      "payload": "/chat/completions, /embeddings, /models, /responses",
+      "details": "Rejected parameters get fixed and retried up to 3 times."
+    },
+    {
+      "id": "e32",
+      "from": "metadata-engine",
+      "to": "webhook-dispatcher",
+      "label": "emit file.*",
+      "protocol": "function call (asyncio.create_task)",
+      "mode": "event",
+      "payload": "{file_id, name, size, mime, folder_id}",
+      "details": "Fire and forget. The request moves on immediately."
+    },
+    {
+      "id": "e33",
+      "from": "webhook-dispatcher",
+      "to": "postgres",
+      "label": "loads webhooks",
+      "protocol": "SQL",
+      "mode": "sync",
+      "payload": "Active webhooks for the owner",
+      "details": "Uses its own session, since the request is already over by then."
+    },
+    {
+      "id": "e34",
+      "from": "webhook-dispatcher",
+      "to": "integrations",
+      "label": "signed POST",
+      "protocol": "HTTP",
+      "mode": "async",
+      "payload": "{event, data} + X-BYOS-Signature",
+      "details": "5 s timeout, no redirects, no retries. One shot."
+    },
+    {
+      "id": "e35",
+      "from": "integrations",
+      "to": "api-gateway",
+      "label": "Bearer byosk_ key",
+      "protocol": "HTTP",
+      "mode": "sync",
+      "payload": "Scoped API calls",
+      "details": "120 requests per 60 s per key. Admin routes return 403."
+    },
+    {
+      "id": "e36",
+      "from": "keep-warm",
+      "to": "api-gateway",
+      "label": "GET /ping",
+      "protocol": "HTTP",
+      "mode": "async",
+      "payload": "No body → 204",
+      "details": "Every 5 minutes. Skips the database and auth entirely."
+    },
+    {
+      "id": "e37",
+      "from": "keep-warm",
+      "to": "web-app",
+      "label": "GET /",
+      "protocol": "HTTP",
+      "mode": "async",
+      "payload": "Root page fetch",
+      "details": "Every 5 minutes, just to keep the lights on."
+    }
+  ]
+}

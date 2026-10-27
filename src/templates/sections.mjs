@@ -261,7 +261,9 @@ export function projectList(layer) {
                       <h3 class="h1 mb-0 container_content none-break">${
                         red || !(p.live ?? p.repo)
                           ? esc(p.name)
-                          : `<a href="${esc(p.live ?? p.repo)}" target="_blank" rel="noopener noreferrer">${esc(p.name)}</a>`
+                          : `<a href="${esc(p.live ?? p.repo)}" target="_blank" rel="noopener noreferrer"${
+                              p.arch ? ` data-arch="${esc(p.arch)}" aria-haspopup="dialog"` : ''
+                            }>${esc(p.name)}</a>`
                       }</h3>
                     </div>
                   </div>

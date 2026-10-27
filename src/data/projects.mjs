@@ -16,6 +16,9 @@
  * @property {string} date    Human-readable month/year.
  * @property {string} [repo]  Source URL.
  * @property {string} [live]  Deployed URL.
+ * @property {string} [arch]  Key of a "how it works" doc in src/data/architecture/<arch>.json. When
+ *                            set, the row opens that popup instead of leaving the page, and the
+ *                            live/repo links move into the popup's corner.
  */
 
 /** @type {Project[]} */
@@ -31,6 +34,7 @@ export const projects = [
     date: 'Aug. 2026',
     repo: 'https://github.com/Astro-Dude/BYOS',
     live: 'https://byos-web.onrender.com/',
+    arch: 'byos',
   },
   {
     name: 'DOM Heist',
@@ -42,6 +46,7 @@ export const projects = [
     date: 'Nov. 2025',
     repo: 'https://github.com/Astro-Dude/VibeExtract',
     live: 'https://chromewebstore.google.com/detail/dom-heist/ejljibcfeobhaehaldildmmgdokmbchc',
+    arch: 'dom-heist',
   },
   {
     name: 'Waves',
