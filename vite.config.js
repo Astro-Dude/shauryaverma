@@ -54,8 +54,38 @@ function renderPage() {
   };
 }
 
+/**
+ * Vite doesn't run Vercel functions, so in dev /api/github is answered by the same module.
+ * It uses GITHUB_TOKEN if set, else the token of whoever is signed in to the gh CLI.
+ */
+function apiInDev() {
+  return {
+    name: 'api-in-dev',
+    apply: 'serve',
+    configureServer(server) {
+      server.middlewares.use('/api/github', async (_req, res) => {
+        try {
+          const { getStats } = await server.ssrLoadModule('/api/github.js');
+          let token = process.env.GITHUB_TOKEN;
+          if (!token) {
+            const { execFileSync } = await import('node:child_process');
+            token = execFileSync('gh', ['auth', 'token'], { encoding: 'utf8' }).trim();
+          }
+          const stats = await getStats(token);
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify(stats));
+        } catch (err) {
+          res.statusCode = 502;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ error: String(err?.message ?? err) }));
+        }
+      });
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [renderPage(), archiveInDev()],
+  plugins: [renderPage(), archiveInDev(), apiInDev()],
   server: { port: 5173 },
   build: { target: 'es2020', assetsInlineLimit: 2048 },
 });

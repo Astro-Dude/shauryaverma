@@ -150,7 +150,12 @@ export function work(layer) {
             </div>
             <div class="col-lg-6 col-sm-8 col-9">
               <div class="simple-masking_el js-simple-masking_el">
-                <p class="h3 mb-1">${esc(h.role)}</p>
+                <p class="h3 mb-1">${
+                  // A job with a write-up opens it, like a project row does.
+                  !red && h.arch
+                    ? `<button type="button" class="history_arch" data-arch="${esc(h.arch)}" aria-haspopup="dialog">${esc(h.role)}</button>`
+                    : esc(h.role)
+                }</p>
                 <p class="mb-0 desc font-400">${esc(h.org)}, ${esc(h.range)}</p>
               </div>
             </div>

@@ -1,56 +1,85 @@
 {
   "project": "DOM Heist",
-  "tagline": "Point at any element on any website. Leave with an offline HTML copy and an LLM-ready TOON spec.",
-  "summary": "A Manifest V3 Chrome extension in vanilla JavaScript. No build step, no dependencies. A content script lives in every frame and freezes whatever you click, minus any style the browser would've given it anyway. The service worker herds frames and fetches fonts. The export tab turns the loot into files you can save.",
+  "tagline": "Lift any component off any website. Get standalone HTML and a TOON spec for your LLM.",
+  "summary": "A Chrome extension in plain JavaScript with no build step and zero dependencies. A content script in every frame picks and reads the component. The service worker herds the frames and fetches fonts. An export tab then hands over the loot as .html and .toon files, plus a fonts ZIP.",
   "features": [
     {
       "id": "point-and-capture",
       "name": "Point-and-click capture",
-      "summary": "Hover, click, and the whole component is yours.",
-      "description": "A red outline follows your cursor. Click a tiny icon and it grabs the whole card it lives in. Alt+Click takes exactly what you pointed at. Shift+Click collects several. Overshot? Alt+Up/Down walks back. Links and menus never notice the click.",
-      "underTheHood": "Clicking an icon usually means you wanted the card, so smartExpand() climbs up to 6 parents and scores each for 'looks like a component'. The tightest one scoring 5+ wins. captureRaw() then freezes everything on the spot, so carousels can't wiggle away. Rule matching is flipped: about 31ms instead of 4.8s on a 9,000-rule page.",
+      "summary": "Point at a thing. Click. It's yours now.",
+      "description": "A red outline follows your cursor, showing the tag and pixel size. Click a tiny icon and it grabs the whole card it lives in. Alt+Click takes exactly what you pointed at. Shift+Click grabs several. Overshot? Alt+Up/Down walks it back.",
+      "underTheHood": "smartExpand() climbs at most 6 ancestors and scores how much each looks like a component: its own background, a border, a shadow, a class name like 'card'. The best scorer wins, ties go to the tightest, and it has to score 5 or more. Everything is read at click time, so a carousel freezes exactly where it was.",
       "steps": [
         {
           "from": "user",
           "to": "selection-overlay",
-          "label": "you click",
-          "narration": "You click. The page never finds out. The click gets swallowed before any link can run off with you.",
+          "label": "your click",
+          "narration": "You click and the page never finds out. The click gets swallowed before any link can run off with you.",
           "mode": "event"
         },
         {
           "from": "selection-overlay",
           "to": "capture-engine",
-          "label": "picks the real component",
-          "narration": "The clicked leaf gets promoted to its best-scoring ancestor. Clicking again mid-capture gets you turned away at the door.",
+          "label": "the expanded pick",
+          "narration": "The clicked icon gets promoted to its whole component. One capture runs at a time, so frantic clicking gets ignored.",
           "mode": "async"
         },
         {
           "from": "capture-engine",
           "to": "host-page",
-          "label": "reads every style",
-          "narration": "It reads each stylesheet once, then walks the element, collecting 180 computed properties per node plus pseudo-elements and form state.",
+          "label": "rules and styles",
+          "narration": "Every stylesheet is read once. Then each node gets its computed style read, pseudo-elements and typed-in form values included.",
           "mode": "sync"
         },
         {
           "from": "capture-engine",
           "to": "defaults-probe",
-          "label": "asks what's default",
-          "narration": "A hidden iframe reports what each tag looks like by default. Anything matching gets binned; the export's reset brings it back anyway.",
+          "label": "per-tag defaults",
+          "narration": "It reads 180 CSS properties per element and bins anything the export's own reset would produce anyway.",
           "mode": "sync"
         },
         {
           "from": "capture-engine",
           "to": "selection-overlay",
-          "label": "frozen tree returns",
-          "narration": "Out comes a frozen snapshot of the element. Any open menu or tooltip hanging off it gets adopted too.",
+          "label": "frozen snapshot",
+          "narration": "Out comes a frozen snapshot of the component. Any open menus or tooltips attached to it get adopted too.",
           "mode": "async"
         },
         {
           "from": "selection-overlay",
           "to": "user",
-          "label": "draws the outline",
-          "narration": "A solid outline marks what you took. Not quite right? Alt+Arrow or the scroll wheel nudges it up or down.",
+          "label": "selection outline",
+          "narration": "You get a solid outline around your pick. Alt+Arrow or the scroll wheel nudges it up or down a level.",
           "mode": "sync"
+        }
+      ],
+      "algorithms": [
+        {
+          "name": "Hit testing — hitTarget() + resolveOverlay()",
+          "summary": "Turns a pointer event into the element you actually meant, through open shadow roots and invisible overlays.",
+          "steps": [
+            "Read event.composedPath(). Unlike elementFromPoint, it already pierces open shadow roots and lists the true innermost node first.",
+            "Register every ShadowRoot found on that path (registerRootsFromPath), so its stylesheets join the next scan.",
+            "Take the first element on the path that is not DOM Heist UI. If it is <html> or <body>, return null: the pointer is over bare background.",
+            "If that element is a transparent click-catcher (absolute or fixed, no paint, no text, at most 1 child, same size as its parent within 4px), look through it.",
+            "First try siblings: pick the largest visible sibling that paints or has text. This matches the common card + overlay pattern.",
+            "Otherwise walk document.elementsFromPoint(x, y) and return the first candidate that is inside the catcher or is not itself a catcher."
+          ],
+          "complexity": "O(path length + siblings), one getComputedStyle per sibling inspected."
+        },
+        {
+          "name": "Smart expansion — smartExpand()",
+          "summary": "A bounded, scored climb from the clicked leaf to the tightest ancestor that looks like a component.",
+          "steps": [
+            "Normalize the start: an SVG internal (<path>, <use>) snaps to its owner <svg>. A <td>/<th> returns its <tr> outright if the row is under 25% of the viewport.",
+            "Return the start unchanged if it is structural (a STRUCTURAL_TAGS tag, covers 25% or more of the viewport, is 60% or more wide and 120px or more tall, or has 8 or more children) or not leafish (it has children, is not a LEAFISH_TAGS tag, and is 12,000px² or larger).",
+            "Climb with parentOrHost(), which steps from a shadow root to its host element, for at most 6 steps.",
+            "Stop climbing at CLIMB_STOP_TAGS (section, form, table, ul, nav and so on), at DOM Heist UI, at growth over 12x the starting area, at more than 90% of viewport width, or at 25% or more of the viewport area.",
+            "Score each ancestor with scoreContainer(). Background differing from the parent's +3, button/label/tr/a[href]/semantic role +3, visible border +2, radius over 2px +2, box-shadow +2, container-ish class (card|chip|tile|field|…) +2, more than one child +2, flex/grid +1, padding on 2 or more sides +1, clipping overflow +1, aria-label/data-testid +1. Growth over 6x −4, width 85% or more of the viewport −3, unpainted single-child wrapper −3, wide fixed/sticky bar −2.",
+            "Keep the best candidate, breaking ties toward the smaller growth (the tightest container).",
+            "Accept it if its score is 5 or more. Otherwise a bare <input>/<textarea>/<select> falls back to its first parent, and anything else stays as clicked."
+          ],
+          "complexity": "At most 6 ancestors, with one getComputedStyle plus one getBoundingClientRect each, plus a short parent-background lookup for painted ones."
         }
       ],
       "keyFiles": [
@@ -59,299 +88,538 @@
         "contentScript.js — getProbeDoc(), defaultsFor(), navUp()/navDown(), shouldWalkOnWheel()",
         "lib/reset.js — RESET_CSS, the :where() reset that is also the pruning baseline"
       ],
-      "status": "shipped"
+      "status": "shipped",
+      "deep": {
+        "algorithm": "Capture-phase interception plus scored ancestor climb",
+        "idea": "Take the press before the page reacts, find the element really under the cursor, then climb to the tightest ancestor that looks like a component.",
+        "how": [
+          "onPointerDown runs in the capture phase and stops the event; swallowInteraction eats mouseup, click, dblclick and contextmenu, so links and menus never fire.",
+          "hitTarget reads composedPath()[0], which pierces open shadow roots; resolveOverlay looks through transparent full-size click-catchers to the painted element beneath.",
+          "smartExpand climbs at most 6 ancestors via parentOrHost, scoring each with scoreContainer; the best score wins (ties to the tightest) if it reaches 5.",
+          "The climb stops at section/form/table/list tags, 12x area growth, 90% of viewport width, or 25% of viewport area.",
+          "captureRaw then freezes the chosen subtree into plain objects, so the later export never touches the live DOM."
+        ],
+        "example": "svg.icon 20×20 clicked (illustrative)\nbutton 28×28: tag +3, aria-label +1, unpainted single child −3 → 1\ndiv.chip 110×32, growth 8.8: bg +3, radius +2, 'chip' class +2, 2 children +2, flex +1, padding +1, growth>6 −4 → 7\ndiv.toolbar 640×48: growth 77 > 12 → stop\nresult: div.chip, the best score and ≥ 5",
+        "why": "Many sites navigate or tear down nodes in their own mousedown handler, so acting on click was too late. Scoring instead of 'nearest div' finds real components; the hard stops keep it from grabbing whole page regions.",
+        "cost": "At most 6 ancestors, one getComputedStyle each, plus a short parent-background lookup for painted ones."
+      },
+      "stepNotes": {
+        "1": "onPointerDown runs in the capture phase with preventDefault and stopImmediatePropagation; swallowInteraction eats the rest of the click. hitTarget takes composedPath()[0], piercing open shadow roots; resolveOverlay swaps an invisible full-size catcher for its largest painted sibling.",
+        "2": "scoreContainer: own background +3, button/label/tr/a[href]/role +3, border, radius, shadow +2 each, card|chip-like class +2, 2+ children +2, flex, padding, clipping +1. Growth over 6x −4. Stops: 12x area, 90% width. Icon → button 1 → chip 7 wins.",
+        "4": "defaultsFor(tag) builds the tag inside its required parents in a hidden iframe carrying RESET_CSS (td in table>tbody>tr, li in ul), reads 180 properties once, and caches them per tag. Inherited properties are compared with the parent's computed value instead.",
+        "5": "The snapshot holds the node tree, diagnostics, font registry, parent flex/grid layout, rect and position, all as plain objects. Capturing at click means a carousel exports the slide you clicked, since finalize later runs on a clone without the DOM."
+      },
+      "nodeNotes": {
+        "selection-overlay": "Catches pointerdown in the capture phase, swallows the click sequence, picks the target with hitTarget and resolveOverlay, runs smartExpand, and draws the outline inside a closed shadow root.",
+        "capture-engine": "captureRaw scans stylesheets once, builds the inverted rule index, walks the chosen subtree pruning styles, freezes the result, then adopts open menus or tooltips attached to it.",
+        "host-page": "Source of the pointer events and computed styles. Its own click handlers never fire, because the press is consumed before they see it.",
+        "defaults-probe": "Hidden iframe loaded with the export's reset. Supplies per-tag default values, so anything the exported document will reproduce on its own is pruned."
+      }
     },
     {
-      "id": "hover-grab",
-      "name": "Grab hover-only panels",
-      "summary": "For tooltips that vanish the moment you move the mouse.",
-      "description": "Press Cmd/Ctrl+Shift+P for Interact mode and the page works normally again, but the outline keeps tracking you. Hover until the panel shows up, then Cmd/Ctrl+Shift+G. Your mouse never moves, so the panel stays put. It even works for charts inside iframes.",
-      "underTheHood": "A MutationObserver diaries every floating layer that appears, up to 240. A layer counts only if it appeared within 6 seconds of this hover, near your pointer. Toasts and navbars need not apply. The grab key goes to every frame, since the focused frame often isn't the one under your cursor.",
+      "id": "dom-walk",
+      "name": "Style-faithful DOM walk",
+      "summary": "Every node, and only the CSS that actually matters.",
+      "description": "It walks the whole selection, shadow roots and frames included, and records how each thing looks instead of what the CSS claims. Most nodes end up with a handful of styles instead of hundreds. Fluid widths stay fluid.",
+      "underTheHood": "A recursive depth-first walk. Each node's computed style is compared with its parent's, so inherited values the export would supply anyway get dropped. Sizes are kept only when the page actually declared them. Every 16ms it pauses for a frame so your tab doesn't lock up.",
       "steps": [
         {
-          "from": "user",
-          "to": "selection-overlay",
-          "label": "Cmd+Shift+P",
-          "narration": "Interact mode. Clicks go back to the page, but the outline keeps following you, because it's what aims the grab.",
-          "mode": "event"
+          "from": "selection-overlay",
+          "to": "capture-engine",
+          "label": "the selected root",
+          "narration": "First it maps every shadow root and readable iframe inside, since querySelectorAll can't see through those walls.",
+          "mode": "async"
         },
         {
-          "from": "user",
+          "from": "capture-engine",
           "to": "host-page",
-          "label": "hovers the trigger",
-          "narration": "You hover. The page does its thing and pops a flyout into <body>. We quietly note when this hover started.",
-          "mode": "event"
-        },
-        {
-          "from": "host-page",
-          "to": "capture-engine",
-          "label": "new layer spotted",
-          "narration": "The observer clocks the new layer. For ARIA-less tooltips, that timestamp is the only evidence linking it to your hover.",
-          "mode": "event"
-        },
-        {
-          "from": "user",
-          "to": "selection-overlay",
-          "label": "Cmd+Shift+G",
-          "narration": "You press grab without touching the mouse. If the cursor's probably inside an iframe, this frame asks the worker for help.",
-          "mode": "event"
-        },
-        {
-          "from": "selection-overlay",
-          "to": "service-worker",
-          "label": "grab request",
-          "narration": "The request heads to the service worker, with one retry after 150ms in case the worker was napping.",
+          "label": "computed style",
+          "narration": "Each element's computed style is read once and passed down to its children, so nobody asks the browser twice.",
           "mode": "sync"
         },
         {
-          "from": "service-worker",
-          "to": "selection-overlay",
-          "label": "GRAB to every frame",
-          "narration": "The worker yells GRAB at every frame on the page. Only the frame actually hovering something answers.",
+          "from": "capture-engine",
+          "to": "defaults-probe",
+          "label": "per-tag defaults",
+          "narration": "Each tag is checked against its default, built inside a proper table or list. A lonely td gets confused.",
           "mode": "sync"
         },
         {
-          "from": "selection-overlay",
-          "to": "capture-engine",
-          "label": "captures the panel",
-          "narration": "The hovered-in panel becomes the selection and is captured while still open. Offsets get reset so it isn't glued to a corner.",
+          "from": "capture-engine",
+          "to": "host-page",
+          "label": "child nodes",
+          "narration": "Children come from the shadow root if there is one. Slots get swapped for whatever is actually drawn in them.",
+          "mode": "async"
+        },
+        {
+          "from": "capture-engine",
+          "to": "selection-overlay",
+          "label": "progress every 16ms",
+          "narration": "Every 16ms it stops, lets the page paint and reports progress. Huge pages crawl along instead of freezing.",
+          "mode": "async"
+        },
+        {
+          "from": "capture-engine",
+          "to": "selection-overlay",
+          "label": "frozen tree",
+          "narration": "When the walk finishes, everything gets stored. From here on nobody touches the live page again.",
           "mode": "async"
         }
       ],
-      "keyFiles": [
-        "contentScript.js — setPaused(), onKeyDown(), requestGrab(), grabHovered(), diagnose()",
-        "contentScript.js — startAppearanceWatch(), looksLikeLayer(), noteAppeared(), layerBelongsToHover()",
-        "background.js — DOMHEIST_CMD 'grab' branch, broadcast(), setActiveBadge()"
+      "algorithms": [
+        {
+          "name": "Scope discovery — collectShadowRoots()",
+          "summary": "Finds every separate query scope inside the selection, because querySelectorAll crosses neither shadow nor frame boundaries.",
+          "steps": [
+            "scopes = [root], stack = [root].",
+            "Pop an element. If it has an open shadowRoot, register it (invalidating the stylesheet cache), add it to scopes and push its children.",
+            "If it is an <iframe> with a readable document, register the document, add it to scopes and push its documentElement.",
+            "Push all light-DOM children. Repeat until the stack is empty, then return scopes."
+          ],
+          "complexity": "O(elements), iterative so deep trees can't overflow the call stack."
+        },
+        {
+          "name": "Stylesheet scan — scanStyleSheets()",
+          "summary": "One recursive pass over every readable CSS rule, cached for the session.",
+          "steps": [
+            "Sources: document.styleSheets plus adoptedStyleSheets, and the same for every registered shadow root and same-origin frame document. CORS-restricted sheets throw on cssRules and are skipped.",
+            "Style rule: split selectorText on commas. For selectors containing :hover, split compounds at top-level combinators with splitCompounds() (tracking () and [] depth), record the subject compound, the hovered compound and the selector with :hover removed, and note whether :hover is on the subject. Rules that declare width, height, min/max, flex-basis, transform-origin or vertical-align go into authoredRules.",
+            "declarationsOf() skips longhands set to \"initial\", which the CSSOM fills in when a shorthand is expanded. Otherwise \"background:#333\" would arrive with six \"initial\" siblings.",
+            "@font-face → parseFontFace(). @keyframes → stored as cssText by name, first one wins. @media is recursed into only if window.matchMedia matches now. @supports and @layer are recursed into transparently.",
+            "Sort hover rules by approximate specificity (ids×10000 + classes/attributes/pseudo-classes×100 + types), then source order."
+          ],
+          "complexity": "O(total rules), once per capture session."
+        },
+        {
+          "name": "Inverted rule index — buildMatchIndex()",
+          "summary": "Runs each rule once against the selection, rather than testing each element against every rule.",
+          "steps": [
+            "For each hover rule and each scope: if the scope is an element and matches the selector, visit it. Then visit every element from scope.querySelectorAll(selector without :hover).",
+            "Visiting fills a Map from element to {own, ancestorRules}. If :hover was on the subject, cleaned declarations merge into own. Otherwise the rule is appended to ancestorRules.",
+            "For each authored rule, querySelectorAll fills a Map from element to the Set of declared properties.",
+            "Selectors the engine rejects are caught and skipped."
+          ],
+          "complexity": "O(rules × scopes) native qSA calls instead of O(elements × rules) matches(). The README measures ~31ms against ~4.8s on 9,000 rules and ~1,200 elements."
+        },
+        {
+          "name": "Recursive walk — walkElement()",
+          "summary": "Async, pre-order, depth-first. Builds one IR node per rendered element.",
+          "steps": [
+            "Increment the node counter and call maybeYield(). Read attributes: href, src, alt, role, aria-*, data-* up to 200 characters and so on, with href made absolute. Then live form state.",
+            "captureStyle(el, cs, parentCs, tag) — see the pruning algorithm. Record el → node in ctx.nodeByEl for later dropdown wiring.",
+            "Replaced elements return a leaf without recursing: canvas → image or placeholder, svg → raw markup, img → image or placeholder, iframe → inlined, remote or placeholder, video/embed/object → placeholder. Placeholders queue pixel recovery.",
+            "Capture hover differences, ::before and ::after, and the icon decision (which may turn the node into an <img> and return).",
+            "Record the font for any node with direct text. Register its shadow root. nextChain = chain + {el, node}, the ancestor stack later used to resolve ancestor-hover hop counts.",
+            "If this is a closed <details> in an engine that hides its content with display:none, set open for the duration of the child loop and remove it in finally.",
+            "Children = shadowRoot.childNodes if a shadow root exists, otherwise childNodes. Light DOM reaches the screen through slots, so it isn't appended twice. Each <slot> is spliced into its assigned nodes, or its fallback children.",
+            "For each child: text → normalizeText(). DOM Heist UI → skip. SKIP_TAGS → drop and count. display:none or visibility:hidden → captureClosedMenu() if it looks like a menu, otherwise drop. A 0×0 box with no children, text or pseudo content → drop. Otherwise recurse with (child, childCs, cs as parentCs, nextChain). opacity:0 is deliberately kept, because it is usually animation state.",
+            "After the loop, a <textarea>'s live value becomes its text child. A non-root leaf that would render empty and has no pseudo-elements queues an \"empty box\" pixel request."
+          ],
+          "complexity": "O(nodes × 180 properties), plus O(depth) to build each child's chain."
+        },
+        {
+          "name": "Style pruning — captureStyle()",
+          "summary": "Keeps a property only if the exported document wouldn't produce the same value by itself.",
+          "steps": [
+            "For each of 180 properties: skip SVG paint properties on non-SVG elements, and skip AUTHORED_ONLY properties (min/max sizes, flex-basis, transform-origin, vertical-align) unless the index or inline style declares them.",
+            "Inherited property at the selection root: keep it if it is in ROOT_INHERITED (color, font-*, line-height, letter-spacing, text-align, white-space, direction and so on), since the root has no parent in the export. Otherwise drop it when it equals the probe default.",
+            "Inherited property elsewhere: drop it when it equals parentCs, unless it is protected (border colors, backdrop-filter, mask-image, aspect-ratio, line-clamp, -webkit-text-fill-color).",
+            "Non-inherited property: drop it when it equals the per-tag default from the probe.",
+            "cleanValue(): rgb()/rgba()/color(srgb) → #rrggbb[aa], relative url() → absolute, blob: URLs dropped, overflow clip → hidden. Any var(--x) left in the value is resolved from the element's computed custom properties, in up to 2 passes for nested variables, and dropped if it still can't be resolved.",
+            "Drop fully transparent values (#rrggbb00) except on borders and outlines and protected properties.",
+            "Cleanup: remove border sides with zero width and outlines with zero width or style none. Remove text-decoration-color, style and thickness when there is no decoration line. Remove -webkit-text-fill-color when it just repeats color. Add -webkit-backdrop-filter and -webkit-background-clip:text aliases."
+          ],
+          "complexity": "180 property checks per element, each O(1) against cached defaults."
+        },
+        {
+          "name": "Sizing policy — applySizingPolicy()",
+          "summary": "Avoids pinning fluid layouts to the pixel size they happened to have on your screen.",
+          "steps": [
+            "Replaced or form elements (img, svg, canvas, iframe, input, select, textarea, progress, meter): set width and height to the rendered px values, rounded to 0.01 (textarea gets no height).",
+            "Selection root: if it is a block, flex or grid container with children or wider than 320px, set width:100% and max-width to its rendered px. Otherwise keep a width only if it was authored. Keep a height only if it was authored.",
+            "Other elements: drop width unless authored or the element is a paint-only box (no text, but a background, border, shadow or mask). Drop height unless authored, a paint-only box, or clipping overflow.",
+            "A flex-basis counts as an authored width, and vice versa."
+          ],
+          "complexity": "O(1) per element using the memoized authored-property Set."
+        },
+        {
+          "name": "Whitespace — normalizeText()",
+          "summary": "Keeps text exactly as rendered, including the spaces around inline elements.",
+          "steps": [
+            "If the parent's white-space is pre, pre-wrap, pre-line or break-spaces, keep the text raw.",
+            "A whitespace-only node is dropped inside flex, grid or table parents, where it doesn't render. Elsewhere it becomes a single space only if it sits between two siblings.",
+            "Otherwise collapse each run of whitespace to one space and keep leading and trailing spaces, so \"Best price, <em>guaranteed</em> daily\" keeps its gaps."
+          ],
+          "complexity": "O(text length)."
+        }
       ],
-      "status": "shipped"
+      "keyFiles": [
+        "contentScript.js — captureRaw(), collectShadowRoots(), walkElement(), collectChildNodes(), slotContent(), normalizeText(), isEmptyZeroBox()",
+        "contentScript.js — captureStyle(), applySizingPolicy(), cleanValue(), resolveCustomProperties(), isDroppableValue()",
+        "contentScript.js — scanStyleSheets(), splitCompounds(), declarationsOf(), buildMatchIndex(), maybeYield()",
+        "contentScript.js — PROPS, INHERITED, PROTECTED_PROPS, AUTHORED_ONLY, ROOT_INHERITED, SKIP_TAGS tables",
+        "lib/reset.js — the reset loaded into the probe as the pruning baseline"
+      ],
+      "status": "shipped",
+      "deep": {
+        "algorithm": "Recursive pre-order depth-first walk with pruning",
+        "idea": "Visit every rendered node once, depth-first, keeping only the style values the exported document would not reproduce on its own.",
+        "how": [
+          "walkElement(el, cs, parentCs, ctx, chain) is an async recursive pre-order DFS: build this node, then await each child's call. chain is the ancestor stack.",
+          "Per node: filtered attributes, live form state, 180 computed properties, hover differences, ::before/::after, icon and font checks, then children.",
+          "Skipped: SKIP_TAGS (script, style, noscript, template, meta…), display:none or visibility:hidden unless menu-like, zero-size empty boxes, and DOM Heist's own domheist- UI.",
+          "Replaced elements end the recursion as leaves: img and canvas → image data, svg → raw markup, iframe → inlined, remote or placeholder.",
+          "Node record: {k:'e', tag, attrs, style, hover, pseudo, ch:[], icon}. Text is {k:'t', v}. Leaves use k 'img', 'raw' or 'ph'.",
+          "Scope discovery (collectShadowRoots) is iterative with an explicit stack; the walk itself is recursive and yields to the browser every 16ms."
+        ],
+        "example": "<div class=card style=\"display:flex\"> (illustrative)\n  <span>Pro</span> <script>…</script> <p hidden>x</p>\n→ {k:'e', tag:'div', style:{…}, ch:[\n    {k:'e', tag:'span', ch:[{k:'t', v:'Pro'}]}\n  ]}\n(script and hidden p skipped; whitespace dropped in a flex parent)",
+        "why": "Pruning against the parent and per-tag defaults shrinks a node from 180 properties to the handful that matter. Hidden subtrees are dropped because capturing everything bloats exports with content nobody selected.",
+        "cost": "O(nodes × 180 properties); one getComputedStyle per node, passed down as parentCs."
+      },
+      "stepNotes": {
+        "2": "180 properties, almost all longhands, across layout, flex, grid, box model, borders, typography, paint, mask, transform, animation, tables, lists and SVG paint. cleanValue converts rgb()/color(srgb) to hex, makes url() absolute, drops blob: URLs, maps clip→hidden, and resolves leftover var().",
+        "4": "Children come from shadowRoot if present, else childNodes; each <slot> becomes assignedNodes({flatten:true}). normalizeText collapses whitespace but keeps edge spaces. Form state: input value or checked, option selected, details open, textarea value written as its text.",
+        "5": "maybeYield counts nodes and reads performance.now() only every 64; after 16ms it reports nodes/estimatedTotal and awaits one animation frame. Checking the clock on every node costs time; never yielding froze large pages for seconds."
+      },
+      "nodeNotes": {
+        "selection-overlay": "Calls captureRaw through addSelection, shows the progress panel driven by onProgress, and stores the frozen result in state.selections.",
+        "capture-engine": "Runs scope discovery, the rule index, the recursive walk with style pruning and sizing policy, child filtering and cooperative yields; afterwards wires closed menus and crops pixels.",
+        "host-page": "Mostly a read-only source: one getComputedStyle per element and cssRules from every readable sheet. Writes are limited to revealing closed menus, briefly opening <details>, and a tiny helper sheet in shadow roots.",
+        "defaults-probe": "Builds each tag inside its required parent chain, reads all 180 properties once, and caches them per tag. Falls back to a small static display table under restrictive CSP."
+      }
     },
     {
-      "id": "menus-and-dropdowns",
-      "name": "Menus and dropdowns",
-      "summary": "Dropdown menus come along, and they still open in the export.",
-      "description": "Grab a dropdown trigger, get its menu. Open menus rendered off at <body> level get found. Closed ones get un-hidden just long enough to capture, then tucked back in. In the export, flip to Interactive and the menu opens on click, with zero JavaScript.",
-      "underTheHood": "findAttachedOverlays() trusts the boring signals first: aria-controls, popovertarget and friends. Geometry is the last resort. Closed menus go through revealTemporarily(), which escalates from removing the hidden attribute to forcing display:block, then undoes every change in a finally block. The export opens menus with a :focus-within rule, because the preview isn't allowed scripts.",
+      "id": "hover-pseudo-animation",
+      "name": "Hover, pseudo and animation",
+      "summary": "Hover effects and animations survive the trip.",
+      "description": "Hover a button in the export and it reacts like it did on the site, even the '.card:hover .button' kind. Spinners keep spinning. Only the @keyframes you actually use come along, not the framework's entire animation library.",
+      "underTheHood": "It scans stylesheets for :hover selectors, strips the :hover off and runs what's left over the selection. A hover on an ancestor gets saved as 'N parents up' instead of an element reference, because references die when the tree is cloned later.",
       "steps": [
         {
-          "from": "user",
-          "to": "selection-overlay",
-          "label": "clicks the trigger",
-          "narration": "You click the dropdown. It doesn't open, because selection mode ate the click.",
-          "mode": "event"
-        },
-        {
-          "from": "selection-overlay",
-          "to": "capture-engine",
-          "label": "captures the trigger",
-          "narration": "The trigger gets walked like anything else. Then the hunt starts for menus that belong to it.",
-          "mode": "async"
-        },
-        {
           "from": "capture-engine",
           "to": "host-page",
-          "label": "peeks at closed menu",
-          "narration": "Found a hidden menu? It gets un-hidden for a split second, read while it has real size, then put back.",
+          "label": ":hover rules",
+          "narration": "Every selector with :hover gets the :hover stripped off and run against the selection to see who it hits.",
           "mode": "sync"
         },
         {
           "from": "capture-engine",
           "to": "host-page",
-          "label": "adopts portal menu",
-          "narration": "An open menu that React teleported to <body> gets tracked down and adopted as an extra selection.",
+          "label": "hover ancestor hops",
+          "narration": "For '.card:hover .title' it counts how many parents up the card is. For an element's own :hover, only the properties that actually change are kept.",
           "mode": "sync"
         },
         {
-          "from": "export-tab",
+          "from": "capture-engine",
+          "to": "host-page",
+          "label": "reads ::before/::after",
+          "narration": "Pseudo-elements stay if they have content or paint something, so empty decorative ones like toggle handles survive.",
+          "mode": "sync"
+        },
+        {
+          "from": "capture-engine",
           "to": "serializers",
-          "label": "wires trigger to menu",
-          "narration": "Flip the export to Interactive and each trigger and menu pair gets a little :focus-within rule.",
+          "label": "hover and pseudo rules",
+          "narration": "Hover rules and pseudo-elements become real CSS classes. Unused @keyframes get left behind.",
           "mode": "sync"
         },
         {
           "from": "preview-frame",
           "to": "user",
-          "label": "menu opens on click",
-          "narration": "Click the trigger in the preview and the menu opens. No scripts allowed in there, so it's all CSS.",
+          "label": "hovers and animates",
+          "narration": "In the preview, hovers react and spinners spin with zero JavaScript. Handy, since JavaScript isn't allowed in there.",
           "mode": "event"
         }
       ],
-      "keyFiles": [
-        "contentScript.js — findAttachedOverlays(), adoptAttachedOverlays(), overlayIsPlausible(), hasOpenTrigger(), ownedByAnotherTrigger()",
-        "contentScript.js — looksLikeHiddenMenu(), revealTemporarily(), captureClosedMenu(), resolveClosedMenus(), findMenuTrigger()",
-        "lib/html-writer.js — collectPairs(), preparePair(), groupInteractive(), hasDropdowns()",
-        "export.js — syncMenuToggle(), menu-seg handler"
+      "algorithms": [
+        {
+          "name": "Ancestor hover as a hop count — captureHover() + finalize() passes",
+          "summary": "Represents \".card:hover .title\" in a way that still works after the tree is cloned.",
+          "steps": [
+            "At capture time, for each ancestor rule, scan chain from the end toward the start. The first ancestor matching rule.hoverCompound gives up = chain.length − i.",
+            "At finalize, markHoverHosts() does a DFS with a stack and marks stack[stack.length − up] as needing a class.",
+            "assign() mints an sN class for every marked or hover-bearing node, even if its style set is unique.",
+            "emitHovers() runs the same DFS and writes \".sHost:hover .sNode\" for each rule, then rules with the same selector are merged."
+          ],
+          "complexity": "O(depth) per ancestor rule at capture time. O(nodes) per finalize pass."
+        },
+        {
+          "name": "Pseudo-element capture — capturePseudo()",
+          "summary": "Keeps visible pseudo-elements, including empty decorative ones.",
+          "steps": [
+            "content of \"normal\", \"none\" or \"\" means no content. attr(x) is resolved to the element's attribute and JSON-quoted.",
+            "hasVisual = a non-transparent background, a border, any of background-image, box-shadow, transform or mask set, or width and height both greater than 0.",
+            "Drop the pseudo if it has no content and no visual, or empty content and no visual.",
+            "Properties: drop inherited values equal to the host element's, transparent values, none/auto/normal, and 0px except for width and height. Keep display when there is content, and drop position:static.",
+            "stripQuotes() decodes CSS escapes such as \\e5cd back into code points. A PUA glyph whose font can't travel is rasterized into the pseudo's background-image.",
+            "In finalize, the before/after pair is JSON-keyed and deduplicated into a shared pN class."
+          ],
+          "complexity": "Two getComputedStyle calls per element."
+        },
+        {
+          "name": "Referenced keyframes only — collectKeyframes()",
+          "summary": "Ships the animations the capture uses and nothing more.",
+          "steps": [
+            "Read animation-name from every shared style and every inline style, split on commas, and ignore \"none\".",
+            "For each name, copy the @keyframes cssText found by the stylesheet scan (first definition wins).",
+            "Add keyframes delivered by remote frames, even if this document never names them."
+          ],
+          "complexity": "O(styles + nodes)."
+        }
       ],
-      "status": "shipped"
+      "keyFiles": [
+        "contentScript.js — scanStyleSheets(), splitCompounds(), specificity(), buildMatchIndex(), captureHover()",
+        "contentScript.js — capturePseudo(), stripQuotes(), collectKeyframes(), finalize() passes 0–2",
+        "lib/html-writer.js — hoverRules(), pseudoRules(), keyframeBlock(), cssString()"
+      ],
+      "status": "shipped",
+      "deep": {
+        "algorithm": "Inverted rule index plus ancestor hop counts",
+        "idea": "Run each CSS rule once against the selection instead of testing every element against every rule, then record hover hosts as hop counts.",
+        "how": [
+          "scanStyleSheets walks every readable sheet once, collecting :hover rules, sizing-authored rules, @font-face and @keyframes; @media counts only if matchMedia matches now.",
+          "buildMatchIndex strips :hover, runs querySelectorAll per rule per scope, and fills Map<element, {own, ancestorRules}>.",
+          "captureHover keeps only own properties that differ from the resting style; ancestor rules become {up: hops, props}.",
+          "capturePseudo keeps ::before/::after that have content or paint, and drops values inherited from the host element.",
+          "finalize forces classes on hover hosts, writes '.sHost:hover .sN', dedupes pseudo pairs into .pN, and keeps only the @keyframes that are used."
+        ],
+        "example": ".card:hover .title { opacity: 1 } (illustrative)\n→ full selector '.card .title', hovered compound '.card'\nchain [div.card, div.body], element span.title → up = 2\nfinalize → .s1:hover .s4 { opacity: 1; }",
+        "why": "Per-element matches() was O(elements × rules): 11.2M calls, about 4.8s on the 9,000-rule fixture, and YouTube Music captures appeared to hang. Hop counts survive finalize's deep clone; element references would dangle.",
+        "cost": "~31ms against ~4.8s on 9,000 rules × ~1,200 elements (README)."
+      },
+      "stepNotes": {
+        "1": "Naive matching calls el.matches(rule) for every element and rule: 11.2M calls, ~4.8s on 9,000 rules × ~1,200 elements. buildMatchIndex runs one querySelectorAll per rule per scope instead, matching natively: ~31ms, roughly 150x faster (README).",
+        "2": "captureHover scans the ancestor chain from the nearest ancestor outward for an element matching the hovered compound, and stores up = hops. For '.card:hover .title' with chain [div.card, div.body], up = 2; finalize then resolves stack[length − 2].",
+        "3": "getComputedStyle(el, '::before'): content 'normal' or 'none' means no content, and attr(x) is resolved. A pseudo is kept if it has content or paints. Stored as {content, style}, minus host-inherited values; untravelable icon glyphs become background-image rasters.",
+        "4": "finalize marks hover hosts, forces sN classes on them, emits '.sN:hover' and '.sHost:hover .sN', and merges duplicate selectors. Pseudo pairs are deduped by JSON key into .pN. collectKeyframes keeps only names listed in animation-name values."
+      },
+      "nodeNotes": {
+        "capture-engine": "Indexes :hover rules, resolves ancestor hops, and reads pseudo-elements; finalize turns these into forced classes, hover selectors and .pN tables, and collectKeyframes picks the used @keyframes.",
+        "host-page": "Provides cssRules (hover rules and @keyframes bodies) and computed styles for each element and its ::before and ::after.",
+        "serializers": "hoverRules, pseudoRules and keyframeBlock write the CSS. Pseudo content is always emitted, even when empty, with non-ASCII escaped as \\hex so icon codepoints survive.",
+        "preview-frame": "Shows hover effects, pseudo-element decorations and animations using CSS alone, while scripts stay blocked."
+      }
     },
     {
-      "id": "cross-origin-iframes",
-      "name": "Cross-origin iframe capture",
-      "summary": "Embedded widgets from other sites come out as real markup.",
-      "description": "The page can't read a cross-origin iframe, so a naive capture gets an empty box. DOM Heist asks its own copy inside the frame to capture itself instead. The frame becomes a scrollable <div>, since a real <iframe> would just reload the live site.",
-      "underTheHood": "The parent holds the <iframe> element but needs Chrome's frameId, and no DOM API will tell it. So it posts a random single-use token into the frame. The frame echoes it to the worker, which reads frameId off the message sender. The browser sets that, so a framed page can't fake it.",
+      "id": "shadow-svg-media",
+      "name": "Shadow DOM and media",
+      "summary": "Web components, SVG sprites, canvases and images all make it out.",
+      "description": "Shadow DOM components export with their slots filled in where the browser drew them. SVG icons that point at a shared sprite get the symbol copied in. Canvases become images. Your half-typed form comes along too.",
+      "underTheHood": "SVGs are cloned, scrubbed of scripts, and currentColor is swapped for the real colour. Images are inlined by drawing the already-decoded bitmap onto a canvas, so no extra network request. If the canvas gets tainted and throws, that's the hint to just keep the URL.",
       "steps": [
         {
           "from": "user",
           "to": "selection-overlay",
-          "label": "selects the embed",
-          "narration": "You click a component with a widget from some other site embedded inside. Nothing special yet.",
+          "label": "hovers web component",
+          "narration": "composedPath() sees inside the shadow tree, and every shadow root on the way gets its stylesheets queued for scanning.",
           "mode": "event"
         },
         {
           "from": "selection-overlay",
           "to": "capture-engine",
-          "label": "walk hits iframe",
-          "narration": "The walk reaches an <iframe> and gets a null document. Locked out. Time for plan B.",
+          "label": "the component host",
+          "narration": "Every nested open shadow root joins the scope list, and the walk goes in through the shadow side door.",
           "mode": "async"
         },
         {
           "from": "capture-engine",
-          "to": "frame-instance",
-          "label": "slips in a token",
-          "narration": "The parent posts a token into the frame, addressed to '*' since it has no idea what origin lives there.",
-          "mode": "async"
-        },
-        {
-          "from": "frame-instance",
-          "to": "service-worker",
-          "label": "echoes the token",
-          "narration": "The frame's copy of DOM Heist echoes the token to the worker, which notes exactly which frame said it.",
-          "mode": "async"
+          "to": "host-page",
+          "label": "SVG and sprites",
+          "narration": "Each <use href=\"#icon\"> gets its symbol copied into the SVG itself, chasing nested references up to 6 levels deep.",
+          "mode": "sync"
         },
         {
           "from": "capture-engine",
-          "to": "service-worker",
-          "label": "who has token X?",
-          "narration": "The parent asks the worker for whoever claimed token X. The worker polls every 40ms, since the hello can show up late.",
+          "to": "host-page",
+          "label": "canvas and image pixels",
+          "narration": "Canvases get snapshotted and checked for blank WebGL readbacks. Images are inlined as WebP until the 10MB budget runs out.",
           "mode": "sync"
         },
         {
-          "from": "service-worker",
-          "to": "frame-instance",
-          "label": "capture yourself",
-          "narration": "The worker messages that exact frame. It captures its own <body> and sends back things only it can see, like scroll positions.",
-          "mode": "sync"
-        },
-        {
-          "from": "service-worker",
-          "to": "capture-engine",
-          "label": "frame payload back",
-          "narration": "The payload lands in a sized stand-in <div>. Its classes get a cf<N> prefix so they don't collide with the parent's.",
-          "mode": "sync"
-        }
-      ],
-      "keyFiles": [
-        "contentScript.js — mintToken(), requestRemoteFrame(), installRemoteHelloListener(), captureOwnDocumentPayload(), captureRemoteFrame(), spliceRemoteFrames()",
-        "contentScript.js — readableFrameDoc(), captureFrame(), frameScrolls(), frameRootBackground() (same-origin path)",
-        "background.js — rememberRemoteFrame(), captureRemoteFrame(), DOMHEIST_FRAME_HELLO / DOMHEIST_CAPTURE_REMOTE handlers"
-      ],
-      "status": "shipped"
-    },
-    {
-      "id": "pixel-recovery",
-      "name": "Pixel recovery fallback",
-      "summary": "If it can't be rebuilt, it gets screenshotted instead.",
-      "description": "Some things show on screen but have no readable source, like a WebGL canvas or a closed shadow root. Instead of exporting a hole, DOM Heist crops that bit from a screenshot as an image. Catch: visible viewport only, and the tab must be active.",
-      "underTheHood": "Regions get queued during the walk, capped at 60. Then the overlay hides for two animation frames so the red outline doesn't end up in the photo, and one screenshot gets taken, since captureVisibleTab is rate-limited. Scale comes from the image width, not devicePixelRatio, which lies under browser zoom. Single-colour crops get binned.",
-      "steps": [
-        {
-          "from": "user",
+          "from": "capture-engine",
           "to": "selection-overlay",
-          "label": "selects the chart",
-          "narration": "You select something with, say, a WebGL chart or a weird app-specific icon font inside.",
-          "mode": "event"
-        },
-        {
-          "from": "selection-overlay",
-          "to": "capture-engine",
-          "label": "flags blank bits",
-          "narration": "The walk notices the WebGL readback came back blank. Instead of failing, it writes down the rectangle for later.",
+          "label": "self-contained nodes",
+          "narration": "What comes back is raw SVG, image data and placeholders. None of it needs the original page anymore.",
           "mode": "async"
+        }
+      ],
+      "algorithms": [
+        {
+          "name": "Sprite resolution — resolveSvgUses()",
+          "summary": "Makes <use> references self-contained with a bounded recursive copy.",
+          "steps": [
+            "Find every <use> in the scope (initially the cloned <svg>) and read href or xlink:href. A reference with no \"#\" points at an external file and is left alone.",
+            "Skip ids already copied or already visited, which guards against cycles.",
+            "findById() searches the original element's root node, then the document, then every known shadow root.",
+            "Clone the target, remove any <script> inside it, and append it to a <defs> (created as the first child if there isn't one). Rewrite the reference to a local href=\"#id\".",
+            "Recurse into the copied symbol with depth + 1, stopping above depth 6."
+          ],
+          "complexity": "O(unique referenced ids), bounded by depth 6."
         },
         {
-          "from": "capture-engine",
-          "to": "service-worker",
-          "label": "one screenshot, please",
-          "narration": "The overlay hides for two frames, then one request goes out covering every flagged region at once.",
-          "mode": "sync"
+          "name": "SVG cleanup — captureSvg()",
+          "summary": "Produces safe, correctly sized SVG markup.",
+          "steps": [
+            "Clone it deeply, remove <script> and DOM Heist style nodes, and remove every on* attribute.",
+            "Remove the root class and style, because the writer adds its own.",
+            "Unless the user selected the SVG directly, drop it if it has no geometry and no <defs> symbol, or if every shape has an invisible fill and stroke.",
+            "Pin width and height to the rendered size, fill in viewBox from viewBox.baseVal if missing, add xmlns, and replace fill or stroke \"currentColor\" with the computed colour."
+          ],
+          "complexity": "O(SVG nodes)."
         },
         {
-          "from": "service-worker",
-          "to": "tab-screenshot",
-          "label": "takes the screenshot",
-          "narration": "Only extensions can screenshot a tab, so the worker does it. Rate limits come back as a reason, not a crash.",
-          "mode": "sync"
+          "name": "Image inlining — captureImage() + inlineBitmap()",
+          "summary": "Uses the bitmap the browser has already decoded instead of fetching it again.",
+          "steps": [
+            "Use el.currentSrc, falling back to the src attribute. Drop the image if there is no source or if it never loaded (not complete, or naturalWidth 0), and count it.",
+            "If it isn't already a data: URI, has 4,000,000 pixels or fewer, and the 10MB inline budget isn't used up: drawImage onto a canvas at natural size and export WebP at 0.9 quality, falling back to PNG.",
+            "If the canvas is tainted (cross-origin without CORS), keep the absolute URL and count it. If the image is 128px or smaller, also queue a pixel crop, since avatars and favicons often need cookies the export won't have."
+          ],
+          "complexity": "One canvas encode per image, within the overall budget."
         },
         {
-          "from": "tab-screenshot",
-          "to": "service-worker",
-          "label": "PNG comes back",
-          "narration": "Chrome hands back a PNG at device resolution. Visible viewport only, nothing below the fold.",
-          "mode": "sync"
-        },
-        {
-          "from": "service-worker",
-          "to": "capture-engine",
-          "label": "crops each region",
-          "narration": "Each rectangle is cut out and swapped in as an image. Solid-colour crops get tossed.",
-          "mode": "sync"
+          "name": "Live form state — captureFormState()",
+          "summary": "Records what the user sees, not what the markup started with.",
+          "steps": [
+            "input: keep type. Keep checked for checkbox or radio, otherwise the live value.",
+            "textarea: stash the live value and write it as the element's text after its children are walked.",
+            "option: keep selected. select: keep multiple. details: keep open.",
+            "disabled, readonly, required and hidden are kept from properties or attributes. Placeholder falls back to aria-label."
+          ],
+          "complexity": "O(1) per element."
         }
       ],
       "keyFiles": [
-        "contentScript.js — wouldRenderEmpty(), requestPixels(), recoverPixels(), cropRegion(), isUniformRegion()",
-        "contentScript.js — captureCanvas(), isBlankBitmap(), ownsTwoDContext(), rasterizeGlyph()",
-        "background.js — captureTab()"
+        "contentScript.js — registerRoot(), registerRootsFromPath(), collectShadowRoots(), collectChildNodes(), slotContent()",
+        "contentScript.js — captureSvg(), resolveSvgUses(), findById(), allGeometryInvisible()",
+        "contentScript.js — captureCanvas(), isBlankBitmap(), ownsTwoDContext(), captureImage(), inlineBitmap()",
+        "contentScript.js — captureAttributes(), captureFormState(), KEEP_ATTRS"
       ],
-      "status": "shipped"
+      "status": "shipped",
+      "deep": {
+        "algorithm": "Scope-aware flattening with local resource inlining",
+        "idea": "Treat each shadow root and frame document as its own scope, flatten slots, and pull every referenced resource inside the output.",
+        "how": [
+          "collectShadowRoots runs an iterative DFS, adding each open shadowRoot and readable iframe document as a separate query and stylesheet scope.",
+          "A shadow host's children come from its shadowRoot; each <slot> is replaced by assignedNodes({flatten:true}), so projected content appears exactly once.",
+          "captureSvg clones the SVG and strips scripts and on* handlers; resolveSvgUses copies referenced symbols into a local <defs>.",
+          "Images: the decoded currentSrc bitmap is drawn to a canvas and exported as WebP 0.9 within a 10MB budget; tainted images keep their URL.",
+          "Canvas: toDataURL, then a 24×24 alpha sample; blank with no 2D context means unreadable WebGL, giving a placeholder plus a pixel crop."
+        ],
+        "example": "<x-chip><b>Beta</b></x-chip>, shadow: <span class=pill><slot></slot></span>\n→ x-chip { span.s1 { b \"Beta\" } }\n<use href=\"#close\"> with <symbol id=close> elsewhere in the page\n→ <svg><defs><symbol id=close>…</symbol></defs><use href=\"#close\"/></svg>\n(illustrative names)",
+        "why": "querySelectorAll crosses neither shadow nor frame boundaries, so each needs its own scope. Reusing the decoded bitmap avoids refetching. Closed shadow roots are unreachable from an extension. Small icon-sized ones can come back as pixels; bigger ones come out hollow.",
+        "cost": "One canvas encode per image; sprite resolution capped at depth 6."
+      },
+      "stepNotes": {
+        "2": "collectShadowRoots adds each open shadowRoot as a scope; allStyleSheets reads root.styleSheets and adoptedStyleSheets, so its rules join the index. Closed roots are invisible to extensions: at best, a small icon-sized one comes back as pixels.",
+        "3": "resolveSvgUses finds <use href='#id'>, clones the target from the document or any shadow root into a local <defs>, rewrites the reference to href='#id', and recurses up to depth 6. External files such as sprite.svg#icon are not fetched.",
+        "4": "Images: draw the decoded currentSrc onto a canvas, toDataURL('image/webp', 0.9) under a 10MB budget; a thrown error means tainted, so the URL is kept. Canvas: toDataURL, then a 24×24 alpha sample; blank with no 2D context means unreadable WebGL."
+      },
+      "nodeNotes": {
+        "selection-overlay": "hitTarget reads composedPath to see into open shadow roots, and registers each root it passes through so their stylesheets join the scan.",
+        "capture-engine": "Walks shadow trees and slots, clones SVGs and resolves their sprites, encodes images and canvases, detects blank WebGL, and records live form state.",
+        "host-page": "Holds the shadow roots, sprite symbols and decoded bitmaps that must be copied inside the self-contained output."
+      }
     },
     {
       "id": "font-fidelity",
       "name": "Faithful fonts and icons",
-      "summary": "The export uses the real fonts, so text lines up.",
-      "description": "It records every font the capture actually painted with, down to the weights. Google fonts get linked and self-hosted ones get bundled. Known icon sets like Font Awesome stay as text. An app's private icon font gets drawn to PNG instead.",
-      "underTheHood": "To check if a font is really there, it measures a test string at 72px against monospace and serif. document.fonts.check() is no help: it says yes to families that don't exist. Each Google family gets its own <link>, because one unknown family makes a combined request fail with HTTP 400.",
+      "summary": "The export uses the same fonts, so text wraps the same.",
+      "description": "It records every font the capture actually painted with, down to the weight and italics. Google fonts get linked, self-hosted ones get bundled. Icon fonts that can't travel get drawn as PNGs. Download fonts saves a ZIP for offline use.",
+      "underTheHood": "To check if a font really loaded, it measures text on a canvas against a fallback, because document.fonts.check() happily says yes to fonts that don't exist. Each Google family gets its own link, since one unknown family makes a combined request fail with a 400.",
       "steps": [
         {
           "from": "user",
           "to": "selection-overlay",
-          "label": "selects some text",
-          "narration": "You grab something set in a fancy webfont, maybe with an icon toolbar along for the ride.",
+          "label": "selects text component",
+          "narration": "You pick something set in a nice webfont, maybe with a row of icons.",
           "mode": "event"
         },
         {
           "from": "capture-engine",
           "to": "host-page",
-          "label": "which font, really?",
-          "narration": "For each font stack, it checks which family is actually there. Icon glyphs whose font can't travel get drawn as images.",
+          "label": "font families in use",
+          "narration": "It measures which family in each stack the browser really used. Icon glyphs that can't travel get drawn as images.",
           "mode": "sync"
         },
         {
           "from": "capture-engine",
           "to": "service-worker",
-          "label": "font plan rides along",
-          "narration": "At export, the payload brings a font plan saying which families to link and which to bundle.",
+          "label": "font plan",
+          "narration": "The payload lists which fonts to link from Google and which ones to bundle as files.",
           "mode": "sync"
         },
         {
           "from": "service-worker",
           "to": "font-hosts",
-          "label": "fetches font files",
-          "narration": "The worker downloads the font files in parallel. One dead URL doesn't hold up the rest.",
+          "label": "font file requests",
+          "narration": "The worker fetches every font file in parallel. One dead URL gets logged instead of blocking the rest.",
           "mode": "async"
         },
         {
           "from": "preview-frame",
           "to": "font-cdns",
-          "label": "links Google families",
-          "narration": "The preview pulls Google Fonts and icon stylesheets from CDNs. Bundled fonts are inlined, so you're looking at the real font.",
+          "label": "Google font links",
+          "narration": "The export links one Google stylesheet per family. The preview inlines bundled fonts, so you see the real thing.",
           "mode": "async"
         },
         {
           "from": "export-tab",
           "to": "downloads-api",
-          "label": "saves the fonts ZIP",
-          "narration": "Before zipping, failed fonts get one more try, since tokenized CDN URLs expire. File names match the paths the HTML expects.",
+          "label": "fonts ZIP",
+          "narration": "Failed fonts get one more try, since tokenized CDN links expire. Then a homemade ZIP writer packs them.",
           "mode": "async"
+        }
+      ],
+      "algorithms": [
+        {
+          "name": "Which font actually painted — resolveUsedFamily() + isFamilyAvailable()",
+          "summary": "Picks the first family in the stack that the browser really has, by measuring text.",
+          "steps": [
+            "parseFamilyStack() splits font-family on commas outside quotes, character by character.",
+            "Walk the stack in order and stop at a generic keyword (serif, sans-serif, system-ui, …), since nothing after it is ever reached.",
+            "For each named family, measure the probe string \"mmmwwwiiilll0123ABCgjpqy\" at 72px with the element's weight and style, twice per fallback: once as \"monospace\" and once as \"\\\"Family\\\", monospace\", then the same with serif.",
+            "The family is available only if both pairs differ by more than 0.5px. A missing family measures the same as its fallback. Results are cached by family|weight|style.",
+            "Icon text skips this and uses the first family directly."
+          ],
+          "complexity": "4 measureText calls per uncached family, weight and style."
+        },
+        {
+          "name": "Font registry and plan — recordFont(), pickFontFaces(), buildFontPlan()",
+          "summary": "Collects every family, weight and italic the capture painted, then decides how each one gets into the export.",
+          "steps": [
+            "recordFont() runs for every node that has direct text or is an icon. It adds the weight (normalized: bold → 700) and italic flag to registry[family] and adds the character count.",
+            "The primary font is the family with the most characters.",
+            "pickFontFaces(): for each scanned @font-face whose family was used, link it if its stylesheet is on fonts.googleapis.com, otherwise bundle it, deduplicated by URL. parseFontFace() ranks each src as data: (5) > woff2 (4) > woff (3) > otf (2) > ttf (1).",
+            "googleLinkedFamilies() parses family= query parameters from <link> hrefs and @import rules (css2 style, and v1 style with A|B).",
+            "buildFontPlan(): every used family that isn't a system font, an icon font or bundled goes on the Google link list with its sorted weights and italics, marked confirmed if the page itself loaded it from Google.",
+            "primaryLoadable is true only for a system, icon, bundled or confirmed-Google family."
+          ],
+          "complexity": "Linear in text nodes plus @font-face rules."
+        },
+        {
+          "name": "Binary transport — fetchFontBinary() + bufferToBase64() + Zip.build()",
+          "summary": "Fetches fonts in the worker, encodes them safely, and packs a reproducible ZIP.",
+          "steps": [
+            "Deduplicate descriptors by URL, then Promise.all over fetches that always resolve: credentials:\"omit\", redirect:\"follow\", a 10s timeout, and ok:false plus a reason on failure.",
+            "base64 in 32KB chunks (String.fromCharCode.apply over subarrays), because spreading a whole 200KB+ font overflows the argument stack.",
+            "ZIP, for each file: a local header (0x04034b50, version 20, UTF-8 name flag 0x0800, method 0 = stored, fixed DOS date 2024-01-01, CRC-32, sizes), the name, then the bytes.",
+            "CRC-32 is table-driven: 256 entries precomputed with polynomial 0xEDB88320, then crc = T[(crc ^ byte) & 0xFF] ^ (crc >>> 8) per byte.",
+            "Then a central directory entry per file pointing at its offset, and an end-of-central-directory record. The fixed timestamp makes archives byte-reproducible."
+          ],
+          "complexity": "O(bytes) for base64 and CRC. No compression, because woff2 is already compressed."
+        },
+        {
+          "name": "Icon glyph decision — walkElement() icon branch + rasterizeGlyph()",
+          "summary": "Keeps icon glyphs as text when the font can come along, and paints them otherwise.",
+          "steps": [
+            "A node is an icon if its direct text looks like a glyph and the first family is a known icon family, or if it has an icon class and contains a private-use codepoint. A glyph is one PUA character, or a ligature word of 32 characters or fewer with no spaces, such as \"chevron_right\".",
+            "The glyph stays text if the family has a bundleable @font-face or is in CDN_EXACT_FAMILIES. In that case font-feature-settings \"liga\" is added, and Material Symbols also get font-variation-settings.",
+            "Otherwise rasterizeGlyph(): a canvas at the element size × devicePixelRatio clamped to 2–4, ctx.font from the computed style, the glyph drawn centred (textAlign center, textBaseline middle), and every alpha byte checked so a blank image is never returned. The node becomes an <img>.",
+            "For a pseudo-element glyph, the raster becomes the pseudo's background-image (contain, centred) and its content is cleared.",
+            "If rasterizing fails, the glyph is counted as lost and a pixel request is queued."
+          ],
+          "complexity": "One canvas draw per untravelable glyph, up to 512px."
         }
       ],
       "keyFiles": [
@@ -361,63 +629,769 @@
         "lib/html-writer.js — googleFontUrl(), ICON_STYLESHEETS, fontFaceBlock()",
         "lib/zip.js — build(), crc32()"
       ],
-      "status": "shipped"
+      "status": "shipped",
+      "deep": {
+        "algorithm": "Text-width availability test plus three-route font plan",
+        "idea": "Find which font each text node actually painted with by measuring it, then link it, bundle it, or leave it to the system.",
+        "how": [
+          "recordFont resolves each font stack to the first family isFamilyAvailable confirms, recording weights, italics and character counts in a registry.",
+          "isFamilyAvailable measures a 24-character probe at 72px with and without the family, against monospace and serif; both must differ by more than 0.5px.",
+          "pickFontFaces: Google-hosted @font-face → link; other used faces → bundle, best src woff2 > woff > otf > ttf, deduplicated by URL.",
+          "The worker fetches binaries in parallel with credentials omitted and a 10s timeout, base64-encoding in 32KB chunks; failures are counted, never fatal.",
+          "Export: one css2 link per Google family; bundled faces inline in the preview, fonts/… paths plus a store-only ZIP when saving."
+        ],
+        "example": "stack '\"Inter Var\", Inter, system-ui' (illustrative widths)\nInter Var: same width as the fallback → not loaded\nInter: monospace 1036.8 vs 812.4, serif 905.3 vs 812.4 → available\n→ <link href=\"…/css2?family=Inter:wght@400;600&display=swap\">",
+        "why": "document.fonts.check() returns true for unknown families because the browser falls back, so it can't answer the question. A combined Google css2 request returns HTTP 400 if any family is unknown, hence one link per family.",
+        "cost": "4 measureText calls per uncached family, weight and style."
+      },
+      "stepNotes": {
+        "2": "parseFamilyStack splits on commas outside quotes; resolveUsedFamily returns the first family isFamilyAvailable confirms, stopping at a generic name. The test measures 'mmmwwwiiilll0123ABCgjpqy' at 72px, family-plus-fallback against fallback, for monospace and serif.",
+        "3": "Used @font-face from fonts.googleapis.com → link; other used faces → bundle, deduplicated by URL; system and icon families are never linked. Best src: data: > woff2 > woff > otf > ttf. A primary font is loadable only if confirmed.",
+        "4": "A content script can't reliably read cross-origin font files; worker fetches carry host permissions. Promise.all runs over fetches that always resolve, to ok or {ok:false, error:'timeout' | 'http 403'}, so one dead URL never blocks others.",
+        "6": "Each file gets a local header (stored method 0, UTF-8 flag, fixed DOS date, CRC-32, sizes), then a central directory and end record follow. CRC-32 uses a 256-entry table from 0xEDB88320. No compression: woff2 is already compressed."
+      },
+      "nodeNotes": {
+        "capture-engine": "recordFont builds a registry of families, weights, italics and character counts; pickFontFaces and buildFontPlan decide link versus bundle and whether the primary font will load.",
+        "host-page": "Source of font stacks, @font-face rules and Google Fonts link hrefs; a canvas in the page measures text widths for the availability test.",
+        "service-worker": "Fetches each bundled binary once per URL, in parallel and error-isolated, and records fontsBundled and fontFailures in diagnostics.",
+        "font-hosts": "Serve the page's own self-hosted font files, requested without credentials. Tokenized URLs may expire before saving, which is why the export tab retries.",
+        "preview-frame": "Uses inlined data-URI binaries and one Google css2 link per family, so the preview renders the real fonts before anything is unzipped.",
+        "font-cdns": "Serve Google font and icon CSS (Material, Font Awesome, Bootstrap Icons) to the exported document when it opens.",
+        "export-tab": "Retries each failed font once through DOMHEIST_FETCH_FONT, then builds the archive with Zip.build.",
+        "downloads-api": "Saves preview-fonts.zip, whose entry names match the saved HTML's fonts/… paths, so unzipping beside it works offline."
+      }
     },
     {
-      "id": "export-and-preview",
-      "name": "Export to HTML/TOON",
-      "summary": "One shortcut opens a tab showing exactly what you stole.",
-      "description": "Cmd/Ctrl+Shift+E opens the export tab. Preview it at phone to desktop widths, light or dark. Read the HTML or the TOON, which is a compact spec with base64 blobs squashed so your LLM doesn't choke. A Diagnostics drawer explains anything that went sideways.",
-      "underTheHood": "finalize() dedupes: repeated styles become shared .sN classes, one-offs stay inline. The worker mirrors payloads under 4 MB to storage.session, because MV3 likes killing the worker before the tab reads it. The reset uses :where() so captured classes win without !important. The preview has no allow-scripts, so nothing captured can run.",
+      "id": "hover-grab",
+      "name": "Grab hover-only panels",
+      "summary": "Catch tooltips that vanish the moment you move the mouse.",
+      "description": "Cmd/Ctrl+Shift+P switches to Interact mode so the page works normally. Hover until the flyout appears, then hit Cmd/Ctrl+Shift+G. Your mouse never moves, so the panel never closes, and it becomes the selection by itself.",
+      "underTheHood": "A MutationObserver logs floating layers as they appear. One counts only if it appeared after this hover began and sits near the pointer, so a toast in a far corner doesn't qualify. The grab key goes to every frame, since the focused one often isn't the one under the cursor.",
       "steps": [
         {
           "from": "user",
           "to": "selection-overlay",
-          "label": "Cmd+Shift+E",
-          "narration": "You hit export. If this frame has nothing selected, the worker rounds up selections from every frame instead.",
+          "label": "Cmd+Shift+P",
+          "narration": "Clicks go back to the page, but the outline keeps following you, because that's how you aim the grab.",
+          "mode": "event"
+        },
+        {
+          "from": "user",
+          "to": "host-page",
+          "label": "hovers trigger",
+          "narration": "The page does its thing and pops a flyout into <body>. DOM Heist notes when this hover started.",
+          "mode": "event"
+        },
+        {
+          "from": "host-page",
+          "to": "capture-engine",
+          "label": "layer appeared",
+          "narration": "A watcher logs the new layer with a timestamp. For tooltips without ARIA wiring, it's the only evidence.",
+          "mode": "event"
+        },
+        {
+          "from": "user",
+          "to": "selection-overlay",
+          "label": "Cmd+Shift+G",
+          "narration": "The grab key fires without touching the mouse. If the cursor is in an iframe, it asks the worker.",
+          "mode": "event"
+        },
+        {
+          "from": "selection-overlay",
+          "to": "service-worker",
+          "label": "grab command",
+          "narration": "The command goes to the service worker, with one retry after 150ms in case it was napping.",
+          "mode": "sync"
+        },
+        {
+          "from": "service-worker",
+          "to": "selection-overlay",
+          "label": "grab to all frames",
+          "narration": "The worker sends GRAB to every frame. Only the one with something under the pointer says yes.",
+          "mode": "sync"
+        },
+        {
+          "from": "selection-overlay",
+          "to": "capture-engine",
+          "label": "the appeared panel",
+          "narration": "The panel is captured while still open, and its position is neutralised so it isn't stuck to a page corner.",
+          "mode": "async"
+        }
+      ],
+      "algorithms": [
+        {
+          "name": "Appearance log — startAppearanceWatch() / noteAppeared()",
+          "summary": "A bounded, insertion-ordered log of floating layers that showed up while selection mode was on.",
+          "steps": [
+            "Observe document with childList + subtree, plus attributes filtered to style, class, hidden, aria-hidden, data-state, open and popover.",
+            "For each record, take the added nodes (childList) or the target (attribute change) and run looksLikeLayer(). It accepts a node that is a direct child of <body>/<html> (where portals live), has a menu/tooltip/listbox/dialog role, has a popover attribute, or has a class, id or test id matching LAYER_HINT_RE.",
+            "Store element → timestamp in a Map. At 240 entries, evict the oldest key, which is the first in insertion order.",
+            "onPointerMove sets state.hoverStamp each time the hovered element changes, so later checks can ask whether something appeared after this hover began."
+          ],
+          "complexity": "O(1) string test per mutation record, and no selector matching on the hot path."
+        },
+        {
+          "name": "Hover attribution — layerBelongsToHover()",
+          "summary": "Decides whether a recently appeared layer is the panel for what the pointer is over.",
+          "steps": [
+            "Cutoff = max(now − 6000ms, hoverStamp − 150ms). Ignore layers stamped earlier or no longer connected.",
+            "The layer must be absolute or fixed, at least 8×8px, visible, outside the selection, and no larger than 60% of the viewport.",
+            "Reject it if it is or contains a landmark (header, nav, main, footer, aside, or the matching ARIA roles).",
+            "Accept it if the pointer is within 32px of its rect.",
+            "Otherwise check the hovered element and up to 4 ancestors (5 levels), stopping once an ancestor exceeds 60% of the viewport, and accept if the layer overlaps or adjoins any of them within 28px. This is how a flyout that opens beside a sidebar rail is matched.",
+            "grabHovered() promotes the first layer tagged \"appeared on hover\" or \"under the pointer\" to be the selection, and otherwise falls back to smartExpand(hovered). With Alt held, it skips all of that and takes exactly the hovered element."
+          ],
+          "complexity": "O(appeared layers), at most 240, each with a few rect reads."
+        }
+      ],
+      "keyFiles": [
+        "contentScript.js — setPaused(), onKeyDown(), requestGrab(), grabHovered(), diagnose()",
+        "contentScript.js — startAppearanceWatch(), looksLikeLayer(), noteAppeared(), layerBelongsToHover()",
+        "background.js — DOMHEIST_CMD 'grab' branch, broadcast(), setActiveBadge()"
+      ],
+      "status": "shipped",
+      "deep": {
+        "algorithm": "Appearance log with hover-relative recency filter",
+        "idea": "Log floating layers as they appear, and credit a layer to the current hover only if it appeared after the hover began and sits nearby.",
+        "how": [
+          "A MutationObserver, active only in selection mode, logs layers passing looksLikeLayer() into a Map<element, timestamp> capped at 240.",
+          "onPointerMove sets hoverStamp whenever the hovered element changes.",
+          "The grab key never moves the pointer; it is broadcast to every frame because composedPath stops at frame boundaries.",
+          "layerBelongsToHover: appeared after hoverStamp and within 6s, positioned, ≤60% of viewport, no landmark, near the pointer or adjoining the element's containers.",
+          "A matching panel replaces the hovered element as the selection; holding Alt captures the hovered element instead."
+        ],
+        "example": "hoverStamp 10.00s on a.nav-link (illustrative)\ndiv.flyout at 10.18s, 4px from the sidebar rail → adopted\ndiv.toast at 10.20s in the far corner → rejected: not near the pointer or the element",
+        "why": "Chart tooltips and flyouts have no ARIA link and no aria-expanded, so 'it appeared while I pointed here' is the only evidence. Measuring recency from a wall clock instead of hoverStamp over-adopted every layer built at page load.",
+        "cost": "One string test per mutation; filtering scans at most 240 entries."
+      },
+      "stepNotes": {
+        "3": "Watches childList, subtree, and attributes style, class, hidden, aria-hidden, data-state, open, popover. looksLikeLayer: parent is <body>, a menu or tooltip role, a popover attribute, or a hint-regex class or id. The Map keeps 240 entries, evicting the oldest.",
+        "6": "The keystroke lands in the frame holding focus, usually the top document, but composedPath never crosses frames, so only the frame under the cursor knows the hover. Every frame is asked, and the grabbed:true reply wins.",
+        "7": "Cutoff = max(now − 6s, hoverStamp − 150ms); layer positioned, ≤60% of viewport, not a landmark; within 32px of the pointer or 28px of the element or its containers (up to 5 levels). A far-corner toast fails placement."
+      },
+      "nodeNotes": {
+        "selection-overlay": "Interact mode stops interception but keeps pointer tracking and hoverStamp. The grab key is handled locally if this frame is hovering, otherwise it goes through the worker.",
+        "host-page": "Opens the hover panel normally, often portaling it into <body>; those mutations feed the appearance log.",
+        "capture-engine": "Owns the appearance Map, applies layerBelongsToHover with the hoverStamp cutoff, and captures the matching panel as the selection.",
+        "service-worker": "Broadcasts DOMHEIST_GRAB to every frame and returns whichever frame answered grabbed:true."
+      }
+    },
+    {
+      "id": "menus-and-dropdowns",
+      "name": "Menus and dropdowns",
+      "summary": "Dropdowns come along, and they still open in the export.",
+      "description": "Pick a dropdown trigger and its menu comes too, whether it's closed or portaled off to <body> the way React likes to do it. The export has an Interactive mode where clicking the trigger opens the menu. No JavaScript involved.",
+      "underTheHood": "It finds the menu through aria-controls and friends first, and only guesses from geometry as a last resort. A closed menu is unhidden on the live page, read, and put back in a finally block. The export opens it with a CSS :focus-within rule.",
+      "steps": [
+        {
+          "from": "user",
+          "to": "selection-overlay",
+          "label": "clicks dropdown trigger",
+          "narration": "Your click selects the trigger instead of opening the menu, because selection mode eats it.",
           "mode": "event"
         },
         {
           "from": "selection-overlay",
           "to": "capture-engine",
-          "label": "builds the payload",
-          "narration": "finalize() works on a copy of the frozen tree, never touching the page, and squashes duplicate styles into shared tables.",
+          "label": "the trigger",
+          "narration": "After walking the trigger, it goes looking outside it for any menu that belongs to it.",
+          "mode": "async"
+        },
+        {
+          "from": "capture-engine",
+          "to": "host-page",
+          "label": "reveals closed menu",
+          "narration": "A hidden menu gets unhidden for a moment, measured while it has a real size, and quietly put back.",
           "mode": "sync"
         },
         {
           "from": "capture-engine",
-          "to": "service-worker",
-          "label": "payload to worker",
-          "narration": "The payload goes to the worker, with one retry in case it was asleep and a 30s timeout.",
+          "to": "host-page",
+          "label": "adopts portal menu",
+          "narration": "Menus rendered way off at the bottom of <body> get tracked down and adopted as extra selections.",
           "mode": "sync"
-        },
-        {
-          "from": "service-worker",
-          "to": "export-tab",
-          "label": "opens the export tab",
-          "narration": "The worker fetches fonts, stashes the payload, saves history without waiting on it, and opens a new tab.",
-          "mode": "async"
         },
         {
           "from": "export-tab",
           "to": "serializers",
-          "label": "turns it into HTML",
-          "narration": "The tab collects the payload and builds the HTML and TOON, pausing between stages so the progress bar isn't lying.",
-          "mode": "sync"
-        },
-        {
-          "from": "export-tab",
-          "to": "preview-frame",
-          "label": "into the sandbox",
-          "narration": "The HTML goes into an iframe that isn't allowed to run scripts. It resizes itself again after fonts swap in.",
+          "label": "trigger and menu pairs",
+          "narration": "With Interactive switched on, each trigger and menu pair gets a :focus-within rule tying them together.",
           "mode": "sync"
         },
         {
           "from": "preview-frame",
           "to": "user",
-          "label": "shows your component",
-          "narration": "You see your component, rebuilt from the export alone. No live page involved.",
+          "label": "menu opens on click",
+          "narration": "Clicking the trigger focuses it and the menu appears. The preview doesn't allow scripts, so CSS does all of it.",
+          "mode": "event"
+        }
+      ],
+      "algorithms": [
+        {
+          "name": "Overlay search — findAttachedOverlays()",
+          "summary": "Seven passes, most reliable signal first, stopping at 4 adopted layers.",
+          "steps": [
+            "Explicit wiring: for the element and every descendant with aria-controls, aria-owns or popovertarget, resolve each referenced id with findById(), searching the element's root, the document and every known shadow root. aria-describedby on the element itself is resolved the same way, which catches tooltips.",
+            "Reverse wiring: collect up to 30 ids inside the selection, then query every scope for [aria-labelledby~=id], [aria-controls~=id] and [aria-describedby~=id]. Keep only positioned (absolute or fixed) layers.",
+            "Native popovers: every [popover] that matches :popover-open.",
+            "Modal dialogs: dialog[open] that matches :modal. A plain <dialog open> is skipped on purpose.",
+            "Appeared on hover: entries in the appearance log that pass layerBelongsToHover().",
+            "Under the pointer (only if nothing has been found yet): FLOATING_SELECTOR candidates near the pointer that no other trigger owns.",
+            "Geometry, only when hasOpenTrigger() finds aria-expanded=\"true\" or an open <details>: positioned candidates that overlap the trigger horizontally by at least 25% and sit within 32px above or below it, and that no other trigger owns.",
+            "Every candidate must pass overlayIsPlausible(): outside the selection, visible, at least 8×8px, and at most 60% of the viewport (90% for explicit wiring)."
+          ],
+          "complexity": "A few querySelectorAll calls per scope. Bounded by MAX_ADOPTED = 4."
+        },
+        {
+          "name": "Reveal ladder — revealTemporarily()",
+          "summary": "Undoes the least amount of hiding needed to lay out a closed menu, and records every change for exact rollback.",
+          "steps": [
+            "Rung 1: remove the hidden attribute, then remove inline display, visibility and opacity, saving each value and its !important priority. Stop if the element is no longer display:none or visibility:hidden.",
+            "Rung 2: order the class list with state-looking names first (hidden, collapsed, is-, js-, d-none, …). Remove classes one at a time and stop at the first removal that reveals the menu. Otherwise put the class back and try the next.",
+            "Rung 3: force display:block, visibility:visible and opacity:1 with !important.",
+            "Return a restore() closure that replays the undo log in reverse, re-adding a removed class, restoring inline values with their priority, and resetting the hidden attribute. captureClosedMenu() calls it in finally.",
+            "Between reveal and restore, captureClosedMenu() re-reads getComputedStyle and calls walkElement(), so the menu's subtree has real geometry while it is captured."
+          ],
+          "complexity": "At most one getComputedStyle per class tried. At most 6 menus per capture."
+        },
+        {
+          "name": "Trigger and host pairing — findMenuTrigger() + resolveClosedMenus()",
+          "summary": "After the walk, wires each captured closed menu to the element that opens it and to an ancestor that contains both.",
+          "steps": [
+            "Trigger strategy 1: something points at the menu ([aria-controls~=id], [aria-owns~=id], [popovertarget~=id], [aria-describedby~=id]).",
+            "Strategy 2: the menu points at its trigger through aria-labelledby, aria-owns or aria-activedescendant.",
+            "Strategy 3: walk previous siblings, climbing up to 4 levels, looking for an element that is or contains TRIGGER_SELECTOR (button, summary, a[href], [role=button], [aria-haspopup], …).",
+            "Host = commonAncestorEl(menu, trigger): put all of the menu's ancestors in a Set, then walk up from the trigger until one is in the Set. Then climb until reaching an element that has a captured node in ctx.nodeByEl.",
+            "Assign one ddId to host, trigger and menu. If no distinct trigger node survived, mark the host ddFocusHost so clicking anywhere in it opens the menu."
+          ],
+          "complexity": "O(depth) per menu."
+        },
+        {
+          "name": "CSS-only toggle — HtmlWriter preparePair()",
+          "summary": "Converts each host/trigger/menu triple into one scoped :focus-within rule.",
+          "steps": [
+            "collectPairs() walks the whole node tree and groups nodes by ddId into {host, triggers[], menus[]}.",
+            "The focus target is the first trigger, or the host if it is a focus host. A tag that isn't natively focusable gets tabindex=\"0\".",
+            "Open display = the menu's inline display, or the display from the last of its classes that sets one (matching cascade order), or block.",
+            "Remove an inline display on the menu so the hide rule can apply. Emit \".domheist-<id>:focus-within .domheist-<id>-menu{display:<open display>}\".",
+            "groupInteractive() wraps two or more top-level nodes that share an id, and have no host among them, in <div class=\"domheist-dd domheist-dd-wrap domheist-<id>\">. That is the adopted-portal case."
+          ],
+          "complexity": "Linear in nodes."
+        }
+      ],
+      "keyFiles": [
+        "contentScript.js — findAttachedOverlays(), adoptAttachedOverlays(), overlayIsPlausible(), hasOpenTrigger(), ownedByAnotherTrigger()",
+        "contentScript.js — looksLikeHiddenMenu(), revealTemporarily(), captureClosedMenu(), resolveClosedMenus(), findMenuTrigger()",
+        "lib/html-writer.js — collectPairs(), preparePair(), groupInteractive(), hasDropdowns()",
+        "export.js — syncMenuToggle(), menu-seg handler"
+      ],
+      "status": "shipped",
+      "deep": {
+        "algorithm": "Reveal ladder plus ranked overlay adoption",
+        "idea": "Capture a dropdown's menu wherever it lives: reveal it if closed, find it outside the trigger if portaled, then make it openable with CSS alone.",
+        "how": [
+          "Closed menus (menu-like role or names) are revealed by revealTemporarily, walked while laid out, and restored in finally; at most 6 per capture.",
+          "Open portal menus are found by findAttachedOverlays in 7 ranked passes, at most 4 per selection, with plausibility and ownership checks.",
+          "resolveClosedMenus pairs each menu with its trigger and a common-ancestor host through a shared ddId.",
+          "The writer turns each ddId group into one :focus-within rule; triggers that can't take focus get tabindex=0."
+        ],
+        "example": "<ul class=\"menu is-collapsed\"> (illustrative)\nrung 1: no hidden attribute or inline style → rung 2: remove is-collapsed → visible\ncapture the subtree → re-add is-collapsed\nexport: .domheist-dd1:focus-within .domheist-dd1-menu{display:flex}",
+        "why": "Synthetic clicks can submit forms or navigate, so only hiding declarations are touched and no events fire. Removing the state class keeps the menu's real flex or grid layout, which forcing display:block would flatten.",
+        "cost": "At most 6 reveals and 4 adoptions per capture."
+      },
+      "stepNotes": {
+        "3": "Rung 1: remove [hidden] and inline display, visibility, opacity. Rung 2: remove one class at a time, state-like names first. Rung 3: force display:block !important. Every change is logged; restore() replays the log in reverse, keeping priorities.",
+        "4": "Order: aria-controls/owns/popovertarget/describedby, reverse aria wiring, :popover-open, dialog:modal, appeared on hover, under the pointer, geometry. Max 60% of viewport, or 90% when explicitly wired. Geometry skips layers that another trigger claims.",
+        "5": "'.domheist-dd .domheist-dd-menu{display:none}' hides every menu; each pair adds '.domheist-dd3:focus-within .domheist-dd3-menu{display:flex}' using the captured display. ddIds are renumbered per selection, so each rule opens only its own menu."
+      },
+      "nodeNotes": {
+        "selection-overlay": "Swallows the trigger's pointerdown, so the page's own toggle never runs and the menu stays as it was.",
+        "capture-engine": "Reveals closed menus, adopts portaled ones, pairs trigger, host and menu with a ddId, and keeps adopted menus absolute at top:100% under their trigger.",
+        "host-page": "Briefly modified: hiding declarations are removed for milliseconds, then restored exactly. No events are dispatched.",
+        "export-tab": "Shows the Static/Interactive toggle only when hasDropdowns finds a complete pair, and rebuilds the HTML when it is switched.",
+        "serializers": "collectPairs, preparePair and groupInteractive emit the hide rule, a :focus-within rule per pair, tabindex on unfocusable triggers, and a wrapper for portal pairs.",
+        "preview-frame": "Opens a menu when its trigger gains focus and closes it on blur, with no JavaScript."
+      }
+    },
+    {
+      "id": "cross-origin-iframes",
+      "name": "Cross-origin iframe capture",
+      "summary": "Embedded widgets from other sites come out as real markup.",
+      "description": "Normally a cross-origin iframe exports as an empty box. DOM Heist asks its own copy inside the frame to capture itself instead. You get the frame's real markup and styles as a scrollable <div>. Up to 4 frames per selection.",
+      "underTheHood": "The parent has the <iframe> element but not Chrome's frameId, and no DOM API gives it one. So it posts a random token into the frame, the frame echoes it to the worker, and the worker reads the sender's frameId. The browser vouches for that, so it can't be faked.",
+      "steps": [
+        {
+          "from": "user",
+          "to": "selection-overlay",
+          "label": "selects embed area",
+          "narration": "You pick a component with someone else's widget embedded in it. Nothing special yet.",
+          "mode": "event"
+        },
+        {
+          "from": "selection-overlay",
+          "to": "capture-engine",
+          "label": "walk reaches iframe",
+          "narration": "The walk hits an iframe whose document it isn't allowed to read. So it takes the long way round.",
+          "mode": "async"
+        },
+        {
+          "from": "capture-engine",
+          "to": "frame-instance",
+          "label": "random token",
+          "narration": "The parent posts a random token into the frame. The token means nothing, which is the whole point.",
+          "mode": "async"
+        },
+        {
+          "from": "frame-instance",
+          "to": "service-worker",
+          "label": "echoed token",
+          "narration": "DOM Heist's copy inside the frame echoes the token to the worker, which notes which frame sent it.",
+          "mode": "async"
+        },
+        {
+          "from": "capture-engine",
+          "to": "service-worker",
+          "label": "capture request",
+          "narration": "The parent asks for whichever frame claimed the token. The worker polls every 40ms, since the hello can arrive late.",
           "mode": "sync"
+        },
+        {
+          "from": "service-worker",
+          "to": "frame-instance",
+          "label": "capture order",
+          "narration": "The frame captures its own body and sends back the payload, plus whether it scrolls and what colour it's painted.",
+          "mode": "sync"
+        },
+        {
+          "from": "service-worker",
+          "to": "capture-engine",
+          "label": "frame payload",
+          "narration": "The payload is slotted into a sized <div>, with its classes renamed so they don't clash with the parent's.",
+          "mode": "sync"
+        }
+      ],
+      "algorithms": [
+        {
+          "name": "Token handshake — requestRemoteFrame() ↔ captureRemoteFrame()",
+          "summary": "Maps an <iframe> element to a Chrome frameId with no DOM API, using a token and the browser-authenticated sender.",
+          "steps": [
+            "Parent: token = \"cf\" + sequence + \"-\" + 8 random base-36 chars, then iframe.contentWindow.postMessage({__domheist:\"domheist-frame-hello\", token}, \"*\").",
+            "Frame: the always-installed message listener checks the marker and sends DOMHEIST_FRAME_HELLO {token} to the worker.",
+            "Worker: rememberRemoteFrame() evicts entries older than 30s, then stores token → {tabId, frameId: sender.frameId, stamp}.",
+            "Parent: sends DOMHEIST_CAPTURE_REMOTE {token, timeout: 4000}. The worker polls its Map every 40ms until the deadline (clamped to 500–10,000ms), because the hello may arrive later.",
+            "Worker: rejects a token from a different tab, deletes the token (single use) and sends DOMHEIST_CAPTURE_FRAME to that exact frameId.",
+            "Frame: captureOwnDocumentPayload() swaps out its own selection list, runs captureRaw(document.body, {noRemote, noPixels}) and buildPayload(), adds frameScrolls, frameBackground and frameUrl, then restores its selection list.",
+            "Parent: turns the <iframe> into a <div> sized to the frame rect, with overflow auto or hidden from frameScrolls and the frame's background, and stores the payload on node.remote for finalize()."
+          ],
+          "complexity": "One extra round trip per frame, capped at 4 remote frames per capture."
+        },
+        {
+          "name": "Same-origin inlining — captureFrame()",
+          "summary": "A readable iframe is walked like any other subtree, with its document treated as a separate scope.",
+          "steps": [
+            "collectShadowRoots() already pushed each readable frame document onto its traversal stack and into the scope list, so its stylesheets and rules are indexed.",
+            "At depth 3 or more (MAX_FRAME_DEPTH), give up on both inlining and the remote handshake, and fall back to pixels.",
+            "Save ctx.frameOffset, then add this iframe's rect.left/top plus its border width. Pixel crops inside the frame need top-document coordinates.",
+            "Recurse: walkElement(doc.body, getComputedStyle(doc.body), iframeCs, ctx, chain). The iframe's computed style acts as the parent for inherited-property pruning.",
+            "Restore the offset and depth in finally. Retag the frame's <body>/<html> to <div>, because the HTML parser discards a nested <body> tag and merges its attributes onto the export's body.",
+            "Make the stand-in <div> the frame's pixel size with overflow:auto, or hidden if scrolling=\"no\" or the document has overflow:hidden. Copy an <html>-painted background onto it."
+          ],
+          "complexity": "Same as the main walk, over the frame's nodes."
+        },
+        {
+          "name": "Class renaming on merge — spliceRemoteFrames()",
+          "summary": "Merges an independently captured payload without its .s1 colliding with the parent's .s1.",
+          "steps": [
+            "Collect every node that has a .remote payload, in tree order. The Nth one gets the prefix \"cf\" + N.",
+            "Copy its styles, pseudos and wrappers tables into the parent's tables under prefixed names, using a rename map.",
+            "Walk its node tree and map each class in node.cls through the rename map.",
+            "Rewrite hover selectors as text, replacing names longest first so \".s1\" never rewrites part of \".s12\".",
+            "Gather its Google fonts, icon keys, @font-face descriptors and @keyframes for buildPayload() to dedupe in. Retag its root body/html to div and append it as the stand-in's child."
+          ],
+          "complexity": "Linear in the remote payload's nodes plus names × hover rules for the text rewrite."
+        }
+      ],
+      "keyFiles": [
+        "contentScript.js — mintToken(), requestRemoteFrame(), installRemoteHelloListener(), captureOwnDocumentPayload(), captureRemoteFrame(), spliceRemoteFrames()",
+        "contentScript.js — readableFrameDoc(), captureFrame(), frameScrolls(), frameRootBackground() (same-origin path)",
+        "background.js — rememberRemoteFrame(), captureRemoteFrame(), DOMHEIST_FRAME_HELLO / DOMHEIST_CAPTURE_REMOTE handlers"
+      ],
+      "status": "shipped",
+      "deep": {
+        "algorithm": "Token handshake addressed by browser-supplied frameId",
+        "idea": "The parent can't read the frame, but DOM Heist also runs inside it; a token lets the worker connect the iframe element to that instance.",
+        "how": [
+          "walkElement tries captureFrame (same-origin, depth < 3), then captureRemoteFrame (at most 4 per capture), then a pixel placeholder.",
+          "The parent posts an opaque token into the frame; the frame echoes it to the worker, which records sender.frameId.",
+          "The parent asks the worker by token; the worker polls, checks the tab, deletes the token and relays CAPTURE_FRAME.",
+          "The frame captures its own body with noRemote and noPixels and returns a complete payload.",
+          "spliceRemoteFrames renames the frame's classes to cf<N>… and appends its nodes under a sized stand-in <div>."
+        ],
+        "example": "1 parent → iframe.postMessage({token: 'cf1-k3x9q2ab'})\n2 frame → worker FRAME_HELLO; worker stores sender.frameId = 7\n3 parent → worker CAPTURE_REMOTE {token}\n4 worker → frame 7 CAPTURE_FRAME\n5 frame 7 → worker → parent: payload, spliced as .cf1s1…\n(token random part illustrative)",
+        "why": "The problem is addressing, not access: no DOM API maps an <iframe> to its Chrome frameId. sender.frameId is set by Chrome, and page scripts have no channel to the worker, so the framed page can't answer for it.",
+        "cost": "One extra round trip per frame; at most 4 remote frames."
+      },
+      "stepNotes": {
+        "3": "requestRemoteFrame mints 'cf<N>-<8 random base-36 chars>' and posts {__domheist:'domheist-frame-hello', token} with targetOrigin '*', because the frame's origin is unknown. The token carries nothing the page could use.",
+        "4": "The frame echoes FRAME_HELLO. Chrome stamps sender.tab.id and sender.frameId on every extension message, and page scripts have no channel to this worker, so the frameId can't be forged. Entries expire after 30s.",
+        "5": "The hello may arrive after the request, so the worker polls every 40ms until a deadline clamped to 500–10,000ms (4,000 requested). A token claimed from a different tab is rejected.",
+        "6": "The token is deleted before relaying, so each one is single-use. The frame runs captureOwnDocumentPayload with noRemote, which stops recursion when a page frames itself, and noPixels, because its coordinates don't match the tab screenshot.",
+        "7": "Each class the frame minted gets the cf<N> prefix, nodes are remapped, and hover selectors are rewritten longest name first. The prefix goes after the dot, so '.s1' inside '.s12' renames consistently anyway; the ordering is defensive."
+      },
+      "nodeNotes": {
+        "selection-overlay": "Starts the capture whose subtree contains the cross-origin iframe.",
+        "capture-engine": "Tries a same-origin read, then the token handshake, then a pixel placeholder; splices the returned payload in with cf<N> class prefixes.",
+        "frame-instance": "Echoes the token to the worker, then captures its own document with noRemote and noPixels and returns a complete payload.",
+        "service-worker": "Maps each token to sender.frameId, polls for late hellos, enforces same-tab and single-use, and relays the capture request."
+      }
+    },
+    {
+      "id": "full-page-multi-frame",
+      "name": "Full page and multi-frame",
+      "summary": "Whole page in one keystroke, iframes and all.",
+      "description": "Cmd/Ctrl+Shift+X grabs the whole page from the frame you're in and goes straight to export, with iframes pulled in by the walk. Selected something inside an iframe? A normal export still finds it, because the worker asks every frame. Selections from several frames merge into one.",
+      "underTheHood": "The worker gets the frame list from chrome.webNavigation, messages every frame in parallel, and treats 4 seconds of silence as a no. Only frames holding a selection reply. The first reply becomes the base, and later frames get their classes prefixed so nothing clashes.",
+      "steps": [
+        {
+          "from": "user",
+          "to": "selection-overlay",
+          "label": "Cmd+Shift+X",
+          "narration": "The body gets selected in this frame, iframes get pulled in by the walk, and the export kicks off as soon as capturing finishes.",
+          "mode": "event"
+        },
+        {
+          "from": "selection-overlay",
+          "to": "service-worker",
+          "label": "export command",
+          "narration": "If this frame has nothing selected, it asks the worker to go round every frame instead.",
+          "mode": "sync"
+        },
+        {
+          "from": "service-worker",
+          "to": "capture-engine",
+          "label": "collect request",
+          "narration": "Every frame gets asked. Frames still mid-capture say nothing rather than hand over half a payload.",
+          "mode": "sync"
+        },
+        {
+          "from": "capture-engine",
+          "to": "service-worker",
+          "label": "payload per frame",
+          "narration": "Payloads come back one per frame. If nobody answers, you get a 'Nothing selected' toast.",
+          "mode": "sync"
+        },
+        {
+          "from": "service-worker",
+          "to": "export-tab",
+          "label": "merged export",
+          "narration": "The frames get merged into one payload, and the export carries on as if it was one page all along.",
+          "mode": "async"
+        }
+      ],
+      "algorithms": [
+        {
+          "name": "Fan-out — listFrames() + broadcast()",
+          "summary": "Messages every frame in parallel, where silence is a valid answer.",
+          "steps": [
+            "frameIds = webNavigation.getAllFrames(tabId).map(frameId), falling back to [0].",
+            "For each frameId, call chrome.tabs.sendMessage(tabId, msg, {frameId}) wrapped in withTimeout(4000ms → null), with .catch → null.",
+            "Await all of them with Promise.all and keep only replies that aren't null."
+          ],
+          "complexity": "One round trip in wall-clock time, bounded at 4s by the slowest frame."
+        },
+        {
+          "name": "Multi-frame merge — mergePayloads() + remapClasses()",
+          "summary": "Combines independently numbered style tables without collisions.",
+          "steps": [
+            "Use the first reply as the base and set diagnostics.frames to the reply count.",
+            "For reply i (from 1): rename its styles, pseudos and wrappers keys to \"f\" + i + name, recording old → new in a Map.",
+            "Rewrite hover selectors with the regex /\\.([spw]\\d+)\\b/g through that Map, and rewrite node.cls arrays recursively.",
+            "Append its tables, hovers, nodes and font faces. Add numeric diagnostics key by key, concatenate per-selection rows, and add icon-family counts.",
+            "mergeFontUsage(): merge Google families by name, unioning and sorting weights and unioning italics. Union icon keys."
+          ],
+          "complexity": "Linear in the total nodes and rules across frames."
+        }
+      ],
+      "keyFiles": [
+        "background.js — listFrames(), broadcast(), sendToFrame(), withTimeout(), mergePayloads(), remapClasses(), mergeFontUsage()",
+        "contentScript.js — selectBody(), requestExport(), DOMHEIST_COLLECT / DOMHEIST_SELECT_BODY handlers"
+      ],
+      "status": "shipped",
+      "deep": {
+        "algorithm": "Broadcast collect with prefixed table merge",
+        "idea": "Ask every frame for its selection in parallel, then merge the payloads, renaming each later frame's classes so the tables can't collide.",
+        "how": [
+          "listFrames uses webNavigation.getAllFrames, falling back to frame 0.",
+          "broadcast messages every frameId in parallel, each wrapped in a 4s timeout that resolves null; null replies are dropped.",
+          "Frames holding a selection reply with buildPayload(); a mid-capture frame replies null; no replies at all gives a 'Nothing selected' toast.",
+          "mergePayloads keeps frame 0's names; frame i's styles, pseudos and wrappers become f<i>…, with hover selectors and node classes rewritten.",
+          "Numeric diagnostics are summed and Google fonts merged by family; @keyframes from later frames are not merged."
+        ],
+        "example": "frame A: .s1{display:flex}  .s12{color:#fff} (illustrative)\nframe B: .s1{gap:4px}  .s12:hover{opacity:.8}\n→ B becomes .f1s1{gap:4px}  .f1s12:hover{opacity:.8}\n→ A keeps .s1 and .s12 unchanged",
+        "why": "Every frame numbers its classes from .s1, so a naive merge would cross-wire styles. Silence is a valid reply because PDF viewers and sandboxed frames run no content script.",
+        "cost": "Wall time bounded by the slowest frame, at most 4s."
+      },
+      "stepNotes": {
+        "3": "webNavigation.getAllFrames lists frameIds, falling back to [0]; DOMHEIST_COLLECT goes to every frame in parallel with a 4s timeout each. Frames with a selection return buildPayload(); a frame still capturing returns null instead of a half-built payload.",
+        "4": "Frame 0 keeps its names; frame i's styles, pseudos and wrappers become f<i>…, and /\\.([spw]\\d+)\\b/ rewrites hover selectors as whole tokens. Fonts merge by family and faces concatenate. Keyframes are not merged: only frame 0's survive."
+      },
+      "nodeNotes": {
+        "selection-overlay": "selectBody captures <body> and then exports; if this frame holds no selection, it asks the worker to collect from every frame.",
+        "service-worker": "Enumerates frames, broadcasts COLLECT with 4s timeouts, merges replies with f<N> prefixes, then runs the normal export.",
+        "capture-engine": "In each frame, answers with buildPayload(), or null if it holds nothing or is still capturing.",
+        "export-tab": "Shows a 'frames N' pill and a note that each frame's classes were renamed."
+      }
+    },
+    {
+      "id": "pixel-recovery",
+      "name": "Pixel recovery fallback",
+      "summary": "If it can't be rebuilt, it gets screenshotted instead.",
+      "description": "Some things are on screen but have no readable source, like a WebGL chart or an icon in a font only that app has. Rather than export a hole, DOM Heist crops that bit out of a tab screenshot. Visible viewport only.",
+      "underTheHood": "Regions get queued during the walk, skipping anything under 6px or over 512px. Then it hides its own outline for two frames so it doesn't photograph itself, and takes exactly one screenshot, because the API is rate-limited. Crops that are one flat colour get thrown away.",
+      "steps": [
+        {
+          "from": "user",
+          "to": "selection-overlay",
+          "label": "selects chart widget",
+          "narration": "You pick something like a WebGL chart, or an icon drawn in a font only that app has.",
+          "mode": "event"
+        },
+        {
+          "from": "selection-overlay",
+          "to": "capture-engine",
+          "label": "walk flags regions",
+          "narration": "Blank canvases and suspiciously empty icon-sized boxes get a rectangle noted down instead of a failure.",
+          "mode": "async"
+        },
+        {
+          "from": "capture-engine",
+          "to": "service-worker",
+          "label": "screenshot request",
+          "narration": "The outline hides for two frames so it isn't in the shot. Then one request covers every queued region.",
+          "mode": "sync"
+        },
+        {
+          "from": "service-worker",
+          "to": "tab-screenshot",
+          "label": "screenshot call",
+          "narration": "Only extensions can call captureVisibleTab. Errors like rate limits come back as a polite reason instead of blowing up.",
+          "mode": "sync"
+        },
+        {
+          "from": "tab-screenshot",
+          "to": "service-worker",
+          "label": "viewport PNG",
+          "narration": "Chrome hands back a full-resolution PNG of what's visible. Anything scrolled out of view is out of luck.",
+          "mode": "sync"
+        },
+        {
+          "from": "service-worker",
+          "to": "capture-engine",
+          "label": "cropped images",
+          "narration": "Each region gets cut out and becomes an <img>. Crops that are one flat colour get binned.",
+          "mode": "sync"
+        }
+      ],
+      "algorithms": [
+        {
+          "name": "Request filtering — requestPixels()",
+          "summary": "Queues a crop only for regions a screenshot can actually help with.",
+          "steps": [
+            "Skip if ctx.noPixels is set (a frame capturing itself for its parent).",
+            "Once 60 requests are queued (PIXEL_LIMIT), only count the extras in diag.pixelsSkipped.",
+            "Add the accumulated same-origin frame offset to the element rect.",
+            "Reject regions under 6px or over 512px on either side, and regions entirely outside the viewport.",
+            "For \"empty box\" requests, also require 64px or less on both sides and an aspect ratio between 0.5 and 2, so the region is icon-shaped rather than a layout gap."
+          ],
+          "complexity": "O(1) per request."
+        },
+        {
+          "name": "One screenshot, N crops — recoverPixels() + cropRegion()",
+          "summary": "Takes a single tab screenshot and cuts every queued region out of it.",
+          "steps": [
+            "Hide the overlay host and wait two requestAnimationFrame ticks, one for the style change and one for the compositor.",
+            "Ask the worker for chrome.tabs.captureVisibleTab as a PNG, then restore the overlay in finally.",
+            "Decode the PNG into an Image. scale = image.width ÷ viewport width, which stays correct under browser zoom where devicePixelRatio is not.",
+            "For each request, clamp the scaled rect to the image bounds and drawImage that slice onto a canvas of the same size.",
+            "isUniformRegion() compares every RGBA pixel to the first and rejects a single-colour crop as an empty spacer.",
+            "Rewrite the node in place: k = \"img\", src = PNG data URL, width and height from the rect, alt = the reason it was recovered, and remove its children."
+          ],
+          "complexity": "One captureVisibleTab call per capture, plus O(pixels) per crop for the uniformity check."
+        },
+        {
+          "name": "Blank WebGL detection — isBlankBitmap() + ownsTwoDContext()",
+          "summary": "Tells \"WebGL read back transparent\" apart from \"2D canvas really is empty\".",
+          "steps": [
+            "Draw the canvas into a 24×24 probe and check that every alpha byte is 0.",
+            "If it is blank, try getContext(\"2d\"). A canvas already owned by WebGL returns null, so the transparent readback means it couldn't be read.",
+            "If it is unreadable, emit a placeholder node and queue a pixel request. A genuinely empty 2D canvas is kept as an image."
+          ],
+          "complexity": "Constant: 576 pixels sampled."
+        }
+      ],
+      "keyFiles": [
+        "contentScript.js — wouldRenderEmpty(), requestPixels(), recoverPixels(), cropRegion(), isUniformRegion()",
+        "contentScript.js — captureCanvas(), isBlankBitmap(), ownsTwoDContext(), rasterizeGlyph()",
+        "background.js — captureTab()"
+      ],
+      "status": "shipped",
+      "deep": {
+        "algorithm": "One screenshot, filtered crops, uniformity rejection",
+        "idea": "When source can't be reproduced, cut that region out of a single tab screenshot and ship it as an image, unless it's a blank spacer.",
+        "how": [
+          "During the walk, requestPixels queues rects for unreadable canvases, frames and images, lost icon glyphs, and empty icon-sized boxes.",
+          "Filters: 6–512px, on-screen, at most 60 queued; speculative empty boxes ≤64px with aspect 0.5–2; same-origin frame offsets added.",
+          "After the walk: hide the overlay, wait two frames, then one captureVisibleTab call through the worker.",
+          "scale = image.width / viewport width; each rect is scaled, clamped to the image and drawn onto its own canvas.",
+          "isUniformRegion rejects crops whose every pixel equals the first; survivors become {k:'img'} nodes."
+        ],
+        "example": "screenshot 2560px wide, viewport 1280px → scale 2\nicon rect (100, 40, 20×20) → source (200, 80, 40×40)\nspacer rect, all #ffffff → uniform → discarded\n(illustrative numbers)",
+        "why": "captureVisibleTab is rate-limited and needs a visible tab, so one shot serves every crop. Speculative recovery catches holes nobody diagnosed; the size and uniformity guards stop it bloating exports.",
+        "cost": "One screenshot per capture plus an O(pixels) uniformity check per crop."
+      },
+      "stepNotes": {
+        "2": "Skip if noPixels is set or 60 are already queued. Add the frame offset. Reject regions under 6px, over 512px, or off-screen. A speculative 'empty box' must be ≤64px with aspect 0.5–2. A 20×20 icon qualifies; a 300×8 spacer doesn't.",
+        "6": "scale = image.width / viewport width; the code distrusts devicePixelRatio under browser zoom. With 2560/1280 = 2, rect (100, 40, 20×20) becomes source (200, 80, 40×40). Rects inside frames already include the frame offset. Uniform crops are discarded."
+      },
+      "nodeNotes": {
+        "selection-overlay": "Its overlay host is hidden for two animation frames so the outline isn't photographed into the crops.",
+        "capture-engine": "Queues filtered rects during the walk, then scales, crops and uniformity-checks each one against the single screenshot.",
+        "service-worker": "Calls captureVisibleTab, which only extension contexts can do, and returns a reason instead of throwing on rate limits or restricted pages.",
+        "tab-screenshot": "A device-pixel PNG of the visible viewport only, so content scrolled out of view can never be recovered."
+      }
+    },
+    {
+      "id": "export-and-preview",
+      "name": "HTML and TOON export",
+      "summary": "One shortcut opens your loot, previewed and ready to save.",
+      "description": "Cmd/Ctrl+Shift+E opens a live preview at a few screen widths, plus the HTML and TOON source. TOON is a compact spec for LLMs, with embedded images cut down to a byte count so they don't eat the context.",
+      "underTheHood": "Styles used more than once become shared classes, and one-offs stay inline. The payload waits in the worker's memory with a backup in session storage, since MV3 likes to kill the worker before the tab reads it. The preview iframe allows no scripts, so nothing captured can run.",
+      "steps": [
+        {
+          "from": "user",
+          "to": "selection-overlay",
+          "label": "Cmd+Shift+E",
+          "narration": "The export key fires. If this frame has nothing selected, the worker rounds up selections from every frame.",
+          "mode": "event"
+        },
+        {
+          "from": "selection-overlay",
+          "to": "capture-engine",
+          "label": "build request",
+          "narration": "Styles get deduplicated into shared tables, working on clones of the frozen trees. The live page isn't touched.",
+          "mode": "sync"
+        },
+        {
+          "from": "capture-engine",
+          "to": "service-worker",
+          "label": "the payload",
+          "narration": "The payload goes to the worker, with one retry if it was asleep. Failures say why and how big.",
+          "mode": "sync"
+        },
+        {
+          "from": "service-worker",
+          "to": "export-tab",
+          "label": "export id",
+          "narration": "The worker fetches fonts, starts saving history without waiting on it, and opens the export tab.",
+          "mode": "async"
+        },
+        {
+          "from": "export-tab",
+          "to": "serializers",
+          "label": "payload to writers",
+          "narration": "The tab builds the HTML and TOON in stages, painting in between so the progress bar isn't lying.",
+          "mode": "sync"
+        },
+        {
+          "from": "export-tab",
+          "to": "preview-frame",
+          "label": "HTML with inline fonts",
+          "narration": "The HTML goes into an iframe with scripts off. It resizes again at 120ms and 600ms for late fonts.",
+          "mode": "sync"
+        },
+        {
+          "from": "preview-frame",
+          "to": "user",
+          "label": "rendered component",
+          "narration": "You see the component rebuilt from the export alone. Diagnostics explain anything dropped or turned into pixels.",
+          "mode": "sync"
+        }
+      ],
+      "algorithms": [
+        {
+          "name": "finalize() — from frozen trees to shared style tables",
+          "summary": "A multi-pass, DOM-free compiler from raw capture trees to class tables, inline overrides and hover selectors.",
+          "steps": [
+            "Deep-clone each selection's raw tree (cloneNodeTree), so the frozen capture can be exported again later.",
+            "Count pass: walk every node and count styleKey(style). The key is the properties sorted by name and joined as \"prop:value;\".",
+            "Pass 0 (markHoverHosts): DFS with an ancestor stack. For each ancestor-hover rule recorded as `up` hops, mark stack[stack.length − up].needsClass so the ancestor gets a class to hang \".host:hover .child\" on.",
+            "Pass 1 (assign): DFS. If a style key appears twice or more, or the node needs a class for a hover rule, give it a shared class sN (one per distinct key, via a Map). Otherwise move its style to node.inline. Pseudo before/after pairs are deduplicated by JSON key into pN classes.",
+            "Pass 2 (emitHovers): DFS with an ancestor stack. Emit \".sN:hover\" for own hover differences and \".sHost:hover .sN\" for ancestor rules, then merge rules with the same selector.",
+            "Group top-level selections by their real parent element. A group whose parent was flex or grid gets a wN wrapper carrying the parent's display, direction, wrap, justify, align, gap, grid templates and padding.",
+            "Renumber dropdown ids per selection so two captures can't both produce dd1, and pair each adopted menu with the selection it was adopted from (adoptedFrom), or failing that the nearest earlier non-adopted one.",
+            "normalizePosition(): a top-level absolute or fixed node gets inline position:relative with offsets and z-index reset, and a percentage translate removed. An adopted menu instead gets absolute at top:100%, left:0 under its trigger.",
+            "spliceRemoteFrames() last, once the parent's names are final."
+          ],
+          "complexity": "Linear in nodes: three DFS passes and one counting pass."
+        },
+        {
+          "name": "buildPayload() — assembling the export",
+          "summary": "Merges per-selection results into one payload.",
+          "steps": [
+            "Run finalize(selections).",
+            "Merge each selection's font registry: union the weight and italic sets and sum character counts.",
+            "pickFontFaces() → bundle list. buildFontPlan() → Google links, icon keys, primary font and whether it loads.",
+            "Merge remote frames' Google families (by family), icon keys and faces (by family|weight|style), skipping duplicates.",
+            "collectKeyframes(): split every animation-name in the style tables and inline styles on commas, and copy the @keyframes cssText for each name that is used.",
+            "Sum every numeric per-selection diagnostic, merge the icon-family counts, and return {url, title, viewport, pageBackground, styles, pseudos, wrappers, hovers, nodes, fonts, fontFaces, keyframes, diagnostics}."
+          ],
+          "complexity": "Linear in nodes and font entries."
+        },
+        {
+          "name": "HtmlWriter.build() — payload to document",
+          "summary": "Renders the body first, then assembles CSS in a fixed cascade order.",
+          "steps": [
+            "Head: charset, viewport, title, a preview-only <base target=\"_blank\">, a \"captured from\" comment, one Google css2 <link> per family (ital,wght@ axes built from the weights and italics) and icon CDN links, with a preconnect when any link exists.",
+            "Body: when interactive, prepare dropdown pairs first, because that mutates tabindex and yields rules. Then call renderNode() for each top-level node.",
+            "renderNode(): a recursive pre-order walk. Text is escaped. A raw SVG gets class and style spliced into its root tag. A placeholder becomes a hatched div with a label. An <img> gets its src. Void tags have no close tag. A single text child stays on one line. Otherwise children are indented one level deeper.",
+            "CSS order: :where() reset → placeholder CSS → interactive CSS and per-pair rules → surface background → optional backdrop surface → @font-face (data URIs in preview, fonts/… paths in the saved file) → @keyframes → .sN and .wN rules → hover rules → ::before/::after rules (content always emitted, even when empty).",
+            "cssString() escapes non-ASCII in content as \\hex followed by a space, so private-use icon codepoints survive any encoding."
+          ],
+          "complexity": "Linear in nodes and rules."
+        },
+        {
+          "name": "TOON serialization — ToonWriter.toToon()",
+          "summary": "A line-per-node, indentation-based text form of the payload.",
+          "steps": [
+            "Sections are written in order: ## Meta, ## Styles, ## Wrappers, ## Hover Styles, ## Pseudo Styles, ## Structure.",
+            "Style bodies are written as \"prop: value; prop: value\", and any url(data:…) inside a value is truncated to its prefix plus \"…(N bytes)\".",
+            "writeNode() is a recursive pre-order walk with two spaces of indent per depth. A header is tag, then .classes, then [inline], then (attributes with booleans as bare flags, src/href data-URIs truncated, \"icon\" flag).",
+            "A single text child goes on the same line in quotes. Multiple children open \"{\", recurse, and close \"}\". Interleaved text becomes bare quoted lines, which keeps its position.",
+            "Raw SVG is collapsed onto one line. A placeholder is written as \"@placeholder WxH \\\"label\\\"\"."
+          ],
+          "complexity": "Linear in nodes."
+        },
+        {
+          "name": "Syntax highlighting — Highlight.highlight()",
+          "summary": "Escapes the source first, then highlights it in a single regex pass.",
+          "steps": [
+            "Above 400KB, return the escaped text without highlighting.",
+            "Escape &, < and > first, so captured markup can never become live tags in the panel.",
+            "For HTML, split around the <style>…</style> island: HTML before and after, CSS inside.",
+            "Each mode runs one master alternation regex through String.replace with a callback that wraps exactly one token. The order of alternatives sets priority (comments, then strings, then tags or properties, then numbers). Because it is a single pass, text inside spans already emitted is never highlighted again."
+          ],
+          "complexity": "O(n), one regex pass per section."
+        },
+        {
+          "name": "Preview sizing — fitFrame()",
+          "summary": "Sizes the sandboxed iframe to its content, and scales fixed widths down to fit the pane.",
+          "steps": [
+            "available = pane width − 44px. target = available for Fit, otherwise 1280, 768 or 375.",
+            "Collapse the iframe to height 0, then read max(documentElement.scrollHeight, body.scrollHeight, 40). allow-same-origin is what allows this read.",
+            "scale = available ÷ target if the target is wider than the pane. Apply transform: scale() to the stage and set its height to height × scale.",
+            "Run again on load, then at 120ms and 600ms for webfont swaps, and on resize."
+          ],
+          "complexity": "O(1) per call."
         }
       ],
       "keyFiles": [
@@ -428,155 +1402,36 @@
         "lib/toon-writer.js — toToon(), truncateDataUri()",
         "lib/highlight.js — escape-first, single-pass highlighter, 400 KB limit"
       ],
-      "status": "shipped"
-    },
-    {
-      "id": "save-with-path",
-      "name": "Save and copy path",
-      "summary": "Save the file, get its path on your clipboard.",
-      "description": "Save the .html, the .toon, or both. The moment a download finishes, its full path on disk lands on your clipboard, so you can paste it straight into an LLM prompt like 'rebuild this in React + Tailwind'.",
-      "underTheHood": "Chrome only knows where a file landed once the download completes, so it polls chrome.downloads.search every 120ms, giving up after 8s. Files go out as Blob URLs because chrome.downloads.download rejects data: URLs from extension pages. If the clipboard API sulks, a hidden textarea and execCommand('copy') step in.",
-      "steps": [
-        {
-          "from": "user",
-          "to": "export-tab",
-          "label": "clicks Save Both",
-          "narration": "You click Save Both. Out go preview.html and component.toon, built from the same payload you just previewed.",
-          "mode": "event"
-        },
-        {
-          "from": "export-tab",
-          "to": "downloads-api",
-          "label": "hands over the files",
-          "narration": "Each file leaves as a Blob URL. No save dialog, no questions.",
-          "mode": "async"
-        },
-        {
-          "from": "downloads-api",
-          "to": "export-tab",
-          "label": "here's the path",
-          "narration": "The tab keeps asking 'done yet?' until the download completes. Only then does Chrome reveal the full path.",
-          "mode": "async"
-        },
-        {
-          "from": "export-tab",
-          "to": "user",
-          "label": "path on clipboard",
-          "narration": "The path goes on your clipboard and a toast tells you so. Go paste it somewhere.",
-          "mode": "sync"
-        }
-      ],
-      "keyFiles": [
-        "export.js — download(), copyPath(), saveOne(), saveBoth(), saveFonts()"
-      ],
-      "status": "shipped"
-    },
-    {
-      "id": "capture-history",
-      "name": "Recent captures",
-      "summary": "Your last 10 heists, one click away.",
-      "description": "Every export gets saved automatically. The popup lists them, newest first. Click one to reopen it, or hit Cmd/Ctrl+Shift+H. History keeps the newest 10, up to 60 MB, and old ones quietly fall off the end.",
-      "underTheHood": "IndexedDB, split in two: a 'meta' store of small rows for drawing lists, and a 'blob' store with the full payload, opened only when you click. nextStamp() keeps timestamps strictly increasing, because two exports in the same millisecond would sort 'h10' before 'h2' and pruning would delete your newest capture. Fun.",
-      "steps": [
-        {
-          "from": "user",
-          "to": "popup",
-          "label": "opens the popup",
-          "narration": "Opening the popup also starts selection mode, and your history count shows up right away.",
-          "mode": "event"
-        },
-        {
-          "from": "popup",
-          "to": "service-worker",
-          "label": "asks for history",
-          "narration": "The popup asks the worker for the list. If anything breaks, it gets a reason back, not silence.",
-          "mode": "sync"
-        },
-        {
-          "from": "service-worker",
-          "to": "history-db",
-          "label": "reads summary rows",
-          "narration": "Only the small summary rows get read, newest first, up to 10. The heavy payloads stay asleep.",
-          "mode": "async"
-        },
-        {
-          "from": "popup",
-          "to": "service-worker",
-          "label": "reopen this one",
-          "narration": "You click a row and the popup closes. Cmd/Ctrl+Shift+H takes the same road.",
-          "mode": "sync"
-        },
-        {
-          "from": "service-worker",
-          "to": "export-tab",
-          "label": "opens history tab",
-          "narration": "The worker opens a fresh export tab pointed at that history entry.",
-          "mode": "async"
-        },
-        {
-          "from": "export-tab",
-          "to": "service-worker",
-          "label": "fetches the payload",
-          "narration": "Now the full payload gets dug out. If it was pruned, you're told it's no longer in history.",
-          "mode": "sync"
-        },
-        {
-          "from": "export-tab",
-          "to": "serializers",
-          "label": "re-renders capture",
-          "narration": "It renders exactly like a fresh export. Same code path, so there's nothing to drift.",
-          "mode": "sync"
-        }
-      ],
-      "keyFiles": [
-        "background.js — openHistoryDb(), saveHistory(), pruneHistory(), listHistory(), getHistoryPayload(), deleteHistory(), nextStamp()",
-        "popup.js — renderHistory(), hist-list click handler",
-        "export.js — renderHistory(), openHistoryEntry()"
-      ],
-      "status": "shipped"
-    },
-    {
-      "id": "toon-cli",
-      "name": "TOON to HTML CLI",
-      "summary": "Turn a .toon file back into HTML, from your terminal.",
-      "description": "Run node scripts/toon-to-html.js input.toon and get standalone HTML next to it, or pass '-' for stdout. Handy for diffing captures across extension versions. Images the TOON squashed to a byte count can't come back, so they show up as labelled placeholder boxes.",
-      "underTheHood": "The CLI requires the exact same writer files the export tab loads. Each one ends in a small UMD-style tail that exports to module.exports in Node and a global in the browser. Same code, same output. No copies to keep in sync, and no dependencies.",
-      "steps": [
-        {
-          "from": "user",
-          "to": "toon-cli",
-          "label": "runs toon-to-html",
-          "narration": "You run the script. It checks your arguments and reads the .toon, or complains clearly if it's missing.",
-          "mode": "sync"
-        },
-        {
-          "from": "toon-cli",
-          "to": "serializers",
-          "label": "parses the TOON",
-          "narration": "The TOON gets parsed back into a payload. No ## Structure section means no HTML, and a non-zero exit.",
-          "mode": "sync"
-        },
-        {
-          "from": "serializers",
-          "to": "toon-cli",
-          "label": "HTML comes back",
-          "narration": "Out comes the same document Save .html would give you, ready to sit next to the fonts ZIP.",
-          "mode": "sync"
-        },
-        {
-          "from": "toon-cli",
-          "to": "user",
-          "label": "writes .html",
-          "narration": "The file gets written. Stderr reports the counts and owns up to any placeholder images.",
-          "mode": "sync"
-        }
-      ],
-      "keyFiles": [
-        "scripts/toon-to-html.js — main(), countNodes(), countStripped()",
-        "lib/toon-writer.js — parseToon()",
-        "lib/html-writer.js — build()"
-      ],
-      "status": "shipped"
+      "status": "shipped",
+      "deep": {
+        "algorithm": "Two-phase capture, style-table compiler, shared writers",
+        "idea": "Freeze the DOM at click time, compile it into deduplicated style tables at export, and render HTML and TOON from that single payload.",
+        "how": [
+          "Click: smartExpand picks the element; captureRaw walks it into a frozen tree of plain objects, with styles already pruned.",
+          "Export: finalize clones the trees, keys each style set, mints .sN/.pN/.wN, and writes hover selectors.",
+          "buildPayload adds the font plan, referenced @keyframes and diagnostics; one runtime message carries everything to the worker.",
+          "The worker fetches fonts, stores the payload in a Map plus a session mirror, records history, and opens export.html?id.",
+          "The tab runs HtmlWriter.build twice (relative fonts for saving, inline for the preview) and ToonWriter.toToon once.",
+          "Saving downloads a Blob, polls downloads.search for the absolute path, and copies that path to the clipboard."
+        ],
+        "example": "li A, li B: {padding-top:8px; color:#fff}; li C also has a background (illustrative)\n→ A, B get class s1; C keeps style=\"…\" inline (one-off)\nA, B, C selected separately; parent ul is display:flex; gap:12px\n→ <div class=\"w1\">A B C</div> with .w1 { display: flex; gap: 12px }",
+        "why": "Reading the DOM at export time would capture whatever the page shows later, like a rotated carousel. Sharing the writer files with the Node CLI keeps both outputs identical by construction, apart from what TOON strips (images, bundled fonts, keyframes).",
+        "cost": "finalize is linear: one counting pass plus three depth-first passes."
+      },
+      "stepNotes": {
+        "2": "styleKey: properties sorted and joined 'prop:value;'. Keys used twice or more, or needing a hover class, become sN in depth-first order; others stay inline. Flex/grid sibling selections wrap in wN. normalizePosition makes absolute roots position:relative.",
+        "3": "chrome.storage.local caps at 10MB without unlimitedStorage, and full pages with bitmaps exceed that. The in-memory Map is fast; the session mirror (only under 4MB) survives MV3 killing the idle worker before the tab reads it.",
+        "5": "HTML: links, then :where() reset, placeholder, dropdown, surface, @font-face, @keyframes, .sN/.wN, hover, pseudo. Zero specificity lets .sN win without !important. TOON: '## Styles' then '.s1: display: flex'; base64 becomes '…(2048 bytes)', counting base64 characters.",
+        "6": "No allow-scripts, so captured code can't run; allow-same-origin lets fitFrame collapse the height to 0, read scrollHeight, apply it, and scale fixed widths to the pane. It re-fits at 120ms and 600ms for webfont swaps."
+      },
+      "nodeNotes": {
+        "selection-overlay": "Shows 'Serializing capture', yields a frame so the panel paints, and refuses to export while a walk is running.",
+        "capture-engine": "finalize and buildPayload compile the frozen trees into style tables, the font plan, referenced keyframes and diagnostics.",
+        "service-worker": "Fetches fonts, holds the payload by id in memory plus a session mirror, saves history without waiting, and opens the export tab.",
+        "export-tab": "Fetches and releases the payload, builds HTML twice and TOON once in named progress stages, and highlights source up to 400KB.",
+        "serializers": "HtmlWriter.build and ToonWriter.toToon: pure functions over the payload, shared with the Node CLI.",
+        "preview-frame": "A sandboxed srcdoc iframe without allow-scripts, sized to its content by fitFrame."
+      }
     }
   ],
   "nodes": [
@@ -589,7 +1444,7 @@
         "Chrome browser"
       ],
       "summary": "Someone lifting a component off a live website.",
-      "details": "You. You poke at it through the popup, the page itself, the export tab and maybe the CLI. The README is aimed at pasting results into an LLM coding tool, specifically Claude Code.",
+      "details": "That's you. You drive it through the popup, the page itself and the export tab. A Node CLI can turn a saved .toon back into HTML later. The README assumes you'll paste the results into Claude Code.",
       "keyFiles": [
         "README.md — Install, Use, Shortcuts"
       ],
@@ -607,13 +1462,13 @@
         "chrome.runtime",
         "chrome.storage.sync"
       ],
-      "summary": "The little toolbar window. Opening it is the start button.",
-      "details": "Opening it starts selection mode and polls status every 700ms. It holds Start, Clear and Export buttons, your recent captures and an editor for seven shortcuts. On chrome:// pages it explains Chrome blocks extensions there instead of showing dead buttons.",
+      "summary": "Starts selecting the moment you open it.",
+      "details": "Shows live status and recent captures, and lets you rebind all seven shortcuts. On chrome:// pages it explains that Chrome blocks extensions there instead of showing dead buttons.",
       "keyFiles": [
         "popup.js — boot(), renderStatus(), renderHistory(), isBlocked(), shortcut editor",
         "popup.html — layout"
       ],
-      "interesting": "Fun fact: opening the popup is the start gesture, so most of the time you never click anything inside it.",
+      "interesting": "Opening the popup is the start button, so most of the time you never click anything inside it.",
       "inferred": false
     },
     {
@@ -627,12 +1482,12 @@
         "iframes"
       ],
       "summary": "The live website you're robbing.",
-      "details": "Mostly read-only. The content script reads its DOM and styles, and watches it change. It only touches the page twice: closed menus get un-hidden for a few milliseconds, and a crosshair cursor shows while selecting, lifted during the walk.",
+      "details": "DOM Heist mostly just reads it. Its writes are small: closed menus and <details> open for a few milliseconds, a crosshair cursor style, a hidden probe iframe and a tiny helper stylesheet inside shadow roots.",
       "keyFiles": [
         "test/fixtures.html — every capture path on one page",
         "test/stress.html — 9,000-rule stylesheet"
       ],
-      "interesting": "revealTemporarily() is the only code that touches the page's own elements. It removes one hiding rule, fires no events and puts everything back.",
+      "interesting": "It only borrows what it has to: closed menus and <details> open for a few milliseconds, then go back in a finally block. A polite burglar who still leaves a sticky note in your shadow roots.",
       "inferred": false
     },
     {
@@ -645,12 +1500,12 @@
         "Closed Shadow DOM",
         "Capture-phase events"
       ],
-      "summary": "The red outline and everything that eats your clicks.",
-      "details": "Injected into every frame. It draws the outline, labels and toolbar inside a closed shadow root at z-index 2147483647. It grabs pointer and key events before the page sees them, and relays messages from the worker.",
+      "summary": "The outline you see, and the input layer underneath.",
+      "details": "Lives in a closed shadow root at z-index 2147483647, with pointer events off. Subtle. It catches clicks, wheel and keys before the page sees them, and handles the shortcuts.",
       "keyFiles": [
         "contentScript.js — buildUI(), onPointerMove(), onPointerDown(), onKeyDown(), setPaused(), message handling section"
       ],
-      "interesting": "Fun fact: the mode toolbar is shy. Come within 32px and it scoots to the other side of the screen.",
+      "interesting": "The mode toolbar dodges your cursor. Get within 32px and it hops to the other side of the screen.",
       "inferred": false
     },
     {
@@ -665,13 +1520,13 @@
         "MutationObserver",
         "Canvas 2D"
       ],
-      "summary": "Freezes your selection, then boils it down into a payload.",
-      "details": "At click time, captureRaw() walks the subtree reading 180 computed properties per node, plus fonts, images, frames and closed menus. At export time, finalize() works on copies with no DOM access and squashes everything into shared style tables.",
+      "summary": "Freezes your pick, then packs it for export.",
+      "details": "Phase one runs when you click and reads everything, 180 properties per node plus fonts, images and frames. Phase two runs at export on clones, never changing the page (it only peeks at font links and the background), and builds shared style tables.",
       "keyFiles": [
         "contentScript.js — captureRaw(), walkElement(), buildMatchIndex(), finalize(), buildPayload()",
         "contentScript.js — findAttachedOverlays(), revealTemporarily(), recoverPixels()"
       ],
-      "interesting": "Splitting it in two is why a carousel freezes exactly where it was when you clicked, and why you can export the same selection again and again.",
+      "interesting": "Two phases is why a carousel freezes where it was when you clicked, and why you can export the same pick twice.",
       "inferred": false
     },
     {
@@ -683,13 +1538,13 @@
         "Hidden iframe",
         "lib/reset.js"
       ],
-      "summary": "A hidden iframe that knows what 'boring' looks like for each tag.",
-      "details": "An off-screen iframe loaded with the export's own reset. Each tag is built inside its proper parents, like a td inside a table, and its defaults are cached. If CSP blocks the iframe, a small static table fills in.",
+      "summary": "A hidden iframe that knows every tag's default look.",
+      "details": "It loads the export's own CSS reset and builds each tag in the right parent, like a td inside a table. Matching captured values get dropped. If CSP blocks it, a fallback table steps in.",
       "keyFiles": [
         "contentScript.js — getProbeDoc(), defaultsFor(), PROBE_PARENTS, STATIC_DEFAULTS",
         "lib/reset.js — note on why the reset is the pruning baseline"
       ],
-      "interesting": "Fun fact: edit the reset and the pruning baseline moves with it, so the export can't drift from what got thrown away.",
+      "interesting": "Change the reset and the pruning moves with it, so the export can't drift from what was pruned.",
       "inferred": false
     },
     {
@@ -701,12 +1556,12 @@
         "Content script in a cross-origin iframe",
         "window.postMessage"
       ],
-      "summary": "DOM Heist's inside man in a cross-origin iframe.",
-      "details": "Content scripts run in every frame, so there's a copy of DOM Heist inside every cross-origin iframe. It echoes handshake tokens, and when asked, captures its own <body> and reports things the parent can't see, like scroll positions.",
+      "summary": "DOM Heist's own copy inside someone else's iframe.",
+      "details": "The content script runs in every frame, so one of these sits inside each cross-origin iframe. When asked, it captures its own page and reports things the parent can't see, like whether it scrolls and its background colour.",
       "keyFiles": [
         "contentScript.js — installRemoteHelloListener(), captureOwnDocumentPayload(), ownFrameBackground()"
       ],
-      "interesting": "Fun fact: a frame working for its parent never starts its own handshakes, so a page that frames itself can't recurse forever.",
+      "interesting": "A frame capturing for its parent never starts handshakes of its own, so a page that frames itself can't recurse forever.",
       "inferred": false
     },
     {
@@ -721,12 +1576,12 @@
         "fetch",
         "IndexedDB"
       ],
-      "summary": "The switchboard that every frame and tab talks through.",
-      "details": "background.js. It broadcasts commands to every frame, turns frame tokens into frameIds, takes the one screenshot, fetches fonts and keeps history. Every handler goes through guard(), so failures come back with a reason instead of silently closing the message port.",
+      "summary": "The switchboard that talks to every frame.",
+      "details": "Broadcasts commands to every frame and merges their replies. It also fetches fonts, takes the one screenshot, and sets the toolbar badge: amber while selecting, blue while interacting.",
       "keyFiles": [
         "background.js — message router, runExport(), broadcast(), mergePayloads(), captureRemoteFrame(), captureTab(), fetchFontBinary(), history section"
       ],
-      "interesting": "It's the only one who can turn a token into a frameId, because Chrome stamps sender.frameId on the message. A framed page can't fake that.",
+      "interesting": "Only the worker can turn a token into a frame id, because Chrome tells it who sent the message. That's what makes spoofing impossible.",
       "inferred": false
     },
     {
@@ -737,12 +1592,12 @@
       "tech": [
         "IndexedDB"
       ],
-      "summary": "Your last 10 exports, in two drawers.",
-      "details": "IndexedDB 'domheist-history'. A 'meta' store holds small summary rows like URL and title. A 'blob' store holds the JSON payload. After every write it's pruned to the newest 10 and 60 MB.",
+      "summary": "Your last 10 exports.",
+      "details": "IndexedDB with two stores: small summary rows and the big payload blobs. After every save it trims down to the newest 10 and 60 MB in total.",
       "keyFiles": [
         "background.js — HISTORY_DB, HISTORY_LIMIT, HISTORY_BYTE_BUDGET, openHistoryDb(), pruneHistory()"
       ],
-      "interesting": "Fun fact: keeping summaries apart from payloads means the popup can list history without unpacking megabytes.",
+      "interesting": "Keeping summaries apart from payloads means the history list loads without unpacking megabytes of JSON.",
       "inferred": false
     },
     {
@@ -753,8 +1608,8 @@
       "tech": [
         "chrome.storage.session"
       ],
-      "summary": "A backup copy of the payload, in case MV3 kills the worker.",
-      "details": "If the payload is under 4 MB, a copy goes here. If MV3 tears down the worker between opening the export tab and the tab's first read, this copy saves the day. Released once the tab has it.",
+      "summary": "A spare copy in case the worker dies.",
+      "details": "Payloads under 4 MB get copied here. If MV3 kills the worker between opening the export tab and the tab reading it, this copy saves the day.",
       "keyFiles": [
         "background.js — MIRROR_LIMIT, runExport(), readPayload(), releasePayload()"
       ],
@@ -769,8 +1624,8 @@
       "tech": [
         "chrome.storage.sync"
       ],
-      "summary": "Your seven keyboard shortcuts, synced by Chrome.",
-      "details": "One 'shortcuts' key in chrome.storage.sync. The popup writes it, and every content script reads it on load, falling back to Cmd/Ctrl+Shift defaults. The content script matches keys itself rather than using Chrome's commands API.",
+      "summary": "Your seven key bindings, synced by Chrome.",
+      "details": "One key holding all seven bindings. The popup writes it, every content script reads it, and Cmd/Ctrl+Shift defaults fill in if it's empty. Matching happens on keydown, not through Chrome's commands API.",
       "keyFiles": [
         "popup.js — save-keys / reset-keys handlers",
         "contentScript.js — loadShortcuts(), matchesShortcut()"
@@ -786,7 +1641,7 @@
       "tech": [
         "chrome.tabs.captureVisibleTab"
       ],
-      "summary": "A PNG of what's on screen. Every pixel-recovery crop comes from here.",
+      "summary": "A PNG of whatever is on screen.",
       "details": "Called at most once per capture. The API is rate-limited, needs the tab active and visible, and only sees the viewport.",
       "keyFiles": [
         "background.js — captureTab()"
@@ -804,12 +1659,12 @@
         "Blob URLs",
         "navigator.clipboard"
       ],
-      "summary": "Saves your files and finally coughs up where they went.",
-      "details": "The export tab hands chrome.downloads a Blob URL, then keeps polling until the download completes. That's when the absolute path appears, and it goes straight to your clipboard.",
+      "summary": "Saves your files and reports where they landed.",
+      "details": "The export tab hands Chrome a Blob URL, then keeps polling until the download completes, because only then does the real file path exist.",
       "keyFiles": [
         "export.js — download(), copyPath()"
       ],
-      "interesting": "Fun fact: polling for the finished download is the only way to learn the real path, and the whole paste-into-an-LLM trick depends on it.",
+      "interesting": "Polling is the only way to learn the real path on disk, and the paste-into-an-LLM workflow needs exactly that.",
       "inferred": false
     },
     {
@@ -823,13 +1678,13 @@
         "lib/highlight.js",
         "lib/zip.js"
       ],
-      "summary": "Where the payload turns into something you can look at.",
-      "details": "export.html, opened with an export id or a history id. It picks up the payload, then builds the HTML, TOON, diagnostics and preview in stages with a progress bar. It also handles saving. It never reads the captured page.",
+      "summary": "Where the loot gets unpacked.",
+      "details": "Takes the payload and builds the preview, HTML, TOON and diagnostics in stages. It also handles the toggles, saving, the fonts ZIP and history. It never looks at the captured page.",
       "keyFiles": [
         "export.js — boot(), renderPayload(), renderDiagnostics(), fitFrame(), saveFonts(), openHistoryEntry()",
         "export.html — layout and sandboxed preview iframe"
       ],
-      "interesting": "Fun fact: a capture reopened from history takes the exact same rendering path as a fresh one. One path, nothing to drift.",
+      "interesting": "Opening an old capture from history runs the same code as a fresh export.",
       "inferred": false
     },
     {
@@ -843,14 +1698,14 @@
         "lib/toon-writer.js",
         "lib/reset.js"
       ],
-      "summary": "Pure functions that turn a payload into HTML or TOON, and back.",
-      "details": "html-writer's build() assembles the font links, the :where() reset, @font-face, keyframes, style rules, CSS-only dropdowns and the node tree. toon-writer goes both ways with toToon() and parseToon(). Same files load in the browser and in Node.",
+      "summary": "Pure functions that turn a payload into HTML or TOON.",
+      "details": "html-writer builds the reset, fonts, keyframes, CSS rules and the node tree. toon-writer converts to and from TOON. The same files run in the extension and in Node.",
       "keyFiles": [
         "lib/html-writer.js — build(), hasDropdowns(), googleFontUrl()",
         "lib/toon-writer.js — toToon(), parseToon()",
         "lib/reset.js — RESET_CSS"
       ],
-      "interesting": "Fun fact: the CLI shares these exact files, so its HTML comes out byte-identical to the extension's.",
+      "interesting": "The CLI loads these same files, so it rebuilds the same HTML from a .toon. The only gaps are what TOON leaves out: embedded images, bundled fonts and @keyframes.",
       "inferred": false
     },
     {
@@ -862,13 +1717,13 @@
         "iframe srcdoc",
         "sandbox without allow-scripts"
       ],
-      "summary": "Shows the export with real fonts. Scripts not invited.",
-      "details": "An iframe sandboxed without allow-scripts, so nothing lifted from someone else's page can run. allow-same-origin stays so the tab can read its height and auto-size it. Links open in new tabs.",
+      "summary": "Shows the export with real fonts and no scripts.",
+      "details": "An iframe sandboxed without allow-scripts, so nothing lifted from a stranger's website can run. Same-origin is allowed so the tab can measure its height.",
       "keyFiles": [
         "export.html — #frame",
         "export.js — renderPreview(), fitFrame()"
       ],
-      "interesting": "The no-scripts rule is why exported dropdowns open with pure CSS. The tests check it with a canary script that must never run.",
+      "interesting": "No scripts is why dropdowns open with pure CSS. A test checks it with a canary script that must never run.",
       "inferred": false
     },
     {
@@ -880,8 +1735,8 @@
         "HTTPS",
         "woff2/woff/otf/ttf"
       ],
-      "summary": "Wherever the page keeps its self-hosted fonts.",
-      "details": "Per PRIVACY.md, the only hosts the extension itself talks to. The worker GETs each @font-face URL in use, without credentials, with a 10s timeout.",
+      "summary": "Wherever the page's self-hosted fonts already live.",
+      "details": "The only servers the extension itself talks to. The worker fetches each font file with no cookies and a 10s timeout.",
       "keyFiles": [
         "background.js — fetchFontBinary()",
         "PRIVACY.md — Network requests"
@@ -899,49 +1754,12 @@
         "cdnjs.cloudflare.com",
         "cdn.jsdelivr.net"
       ],
-      "summary": "Public CDNs the exported HTML pulls Google fonts and icons from.",
-      "details": "The export calls these, the extension doesn't. One css2 link per Google family, plus Material Icons and Symbols, Font Awesome 6.5.2 and 4.7.0, Bootstrap Icons 1.11.3, and Bootstrap 3.4.1 just for Glyphicons.",
+      "summary": "Public CDNs the exported HTML links to.",
+      "details": "Requested by the exported page itself, never by the extension. Google fonts plus icon sets like Font Awesome and Material Icons.",
       "keyFiles": [
         "lib/html-writer.js — googleFontLinks(), ICON_STYLESHEETS"
       ],
-      "interesting": "One link per family on purpose: a combined css2 request returns HTTP 400 if even one family isn't on Google Fonts.",
-      "inferred": false
-    },
-    {
-      "id": "toon-cli",
-      "label": "TOON CLI",
-      "zone": "tooling",
-      "kind": "other",
-      "tech": [
-        "Node.js"
-      ],
-      "summary": "Turns a .toon back into HTML using the extension's own writers.",
-      "details": "scripts/toon-to-html.js. Zero dependencies, and it doesn't ship in the release ZIP.",
-      "keyFiles": [
-        "scripts/toon-to-html.js — main()"
-      ],
-      "interesting": null,
-      "inferred": false
-    },
-    {
-      "id": "test-harness",
-      "label": "Test Harness",
-      "zone": "tooling",
-      "kind": "other",
-      "tech": [
-        "Node.js",
-        "Headless Chrome",
-        "Chrome DevTools Protocol",
-        "node:vm"
-      ],
-      "summary": "Zero-dependency tests that drive the real content script in headless Chrome.",
-      "details": "Launches headless Chrome and serves the repo on two ports, so cross-origin frames are actually cross-origin. Talks CDP through a hand-written WebSocket client. The worker runs in node:vm with a fake chrome object. The README counts 526 passing assertions.",
-      "keyFiles": [
-        "test/cdp-runner.js — Chrome launcher, HTTP servers, CDP client",
-        "test/run-fixtures.js, test/run-dropdowns.js, test/run-iframes.js, test/run-remote.js — browser suites",
-        "test/run-worker.js — worker suite"
-      ],
-      "interesting": "Hover tests move the real cursor through CDP, since fake events never trigger :hover. The cross-origin suite first proves the parent really can't read the frame.",
+      "interesting": "One link per Google family on purpose. Ask for several at once and one unknown family gets the whole request a 400.",
       "inferred": false
     }
   ],
@@ -949,27 +1767,27 @@
     {
       "id": "user",
       "label": "User",
-      "description": "You, basically."
+      "description": "The person doing the stealing."
     },
     {
       "id": "controls",
       "label": "Popup",
-      "description": "The toolbar popup that starts everything."
+      "description": "The toolbar popup and its settings."
     },
     {
       "id": "page",
       "label": "Inspected Tab",
-      "description": "The live page, plus our script in every frame."
+      "description": "The live page and the scripts inside it."
     },
     {
       "id": "worker",
       "label": "Service Worker",
-      "description": "The MV3 background worker keeping frames in line."
+      "description": "The background worker coordinating everything."
     },
     {
       "id": "storage",
       "label": "Browser Storage",
-      "description": "Where history and shortcuts live."
+      "description": "Where history and settings are kept."
     },
     {
       "id": "browser",
@@ -979,17 +1797,12 @@
     {
       "id": "output",
       "label": "Export Tab",
-      "description": "The extension page that shows and saves a capture."
+      "description": "Where captures get previewed and saved."
     },
     {
       "id": "external",
       "label": "Third-party Hosts",
       "description": "Font servers and CDNs out on the internet."
-    },
-    {
-      "id": "tooling",
-      "label": "Dev Tooling",
-      "description": "Node tools in the repo that never ship."
     }
   ],
   "edges": [
@@ -1001,7 +1814,7 @@
       "protocol": "browser UI",
       "mode": "event",
       "payload": "Toolbar icon click",
-      "details": "Opening the popup starts selection mode. Restricted pages get an explanation instead."
+      "details": "Opening the popup starts selection. Restricted pages get an explanation instead."
     },
     {
       "id": "e2",
@@ -1011,7 +1824,7 @@
       "protocol": "DOM events (capture phase)",
       "mode": "event",
       "payload": "pointermove, pointerdown, wheel, keydown",
-      "details": "In Select mode the whole click gets swallowed. In Interact mode, only movement and shortcuts are handled."
+      "details": "In Select mode clicks get swallowed. In Interact mode only movement and shortcuts are watched."
     },
     {
       "id": "e3",
@@ -1021,7 +1834,7 @@
       "protocol": "DOM events",
       "mode": "event",
       "payload": "Hover and clicks while in Interact mode",
-      "details": "How you open menus or summon hover panels before grabbing them."
+      "details": "To open menus or hover panels before grabbing them."
     },
     {
       "id": "e4",
@@ -1031,17 +1844,7 @@
       "protocol": "browser UI",
       "mode": "event",
       "payload": "Button clicks",
-      "details": "Width, surface, Static/Interactive, Copy, saving and History."
-    },
-    {
-      "id": "e5",
-      "from": "user",
-      "to": "toon-cli",
-      "label": "runs CLI",
-      "protocol": "shell",
-      "mode": "sync",
-      "payload": "node scripts/toon-to-html.js in.toon [out.html|-]",
-      "details": "Exits non-zero if the file's missing or has no ## Structure section."
+      "details": "Preview width, Interactive mode, copy, save and history."
     },
     {
       "id": "e6",
@@ -1051,7 +1854,7 @@
       "protocol": "chrome.runtime message",
       "mode": "sync",
       "payload": "{ type: 'DOMHEIST_CMD', cmd: 'start'|'clear'|'export', tabId }; DOMHEIST_HISTORY_LIST / OPEN_HISTORY / HISTORY_DELETE",
-      "details": "A lastError counts as a null reply. The popup closes after a successful export or history open."
+      "details": "Commands and history requests. The popup closes itself after a successful export."
     },
     {
       "id": "e7",
@@ -1061,7 +1864,7 @@
       "protocol": "chrome.tabs.sendMessage",
       "mode": "sync",
       "payload": "DOMHEIST_STATUS → { active, paused, count, isFrame }; DOMHEIST_PAUSE; DOMHEIST_SHORTCUTS",
-      "details": "Polled every 700ms. No reply means no content script, so the popup suggests a reload."
+      "details": "Polled every 700ms. No reply means the script isn't loaded, so it suggests a reload."
     },
     {
       "id": "e8",
@@ -1071,7 +1874,7 @@
       "protocol": "chrome.storage.sync",
       "mode": "async",
       "payload": "{ shortcuts: { start|export|fullpage|history|pause|grab|diagnose: { primary, shift, alt, key } } }",
-      "details": "Validated and merged onto the defaults, so a missing editor row can't delete a binding."
+      "details": "Checked so every action has a key, then merged onto the defaults."
     },
     {
       "id": "e9",
@@ -1081,7 +1884,7 @@
       "protocol": "chrome.storage.sync",
       "mode": "async",
       "payload": "get({ shortcuts: null })",
-      "details": "Falls back to the default shortcuts when the value is empty or the read throws."
+      "details": "Falls back to the default shortcuts if nothing is saved or the read fails."
     },
     {
       "id": "e10",
@@ -1091,7 +1894,7 @@
       "protocol": "function call",
       "mode": "async",
       "payload": "addSelection(el, replace, { noAdopt }); grabHovered(exact); requestExport() → buildPayload()",
-      "details": "Overlapping gestures get rejected. Exporting mid-walk gets you 'Still extracting…'."
+      "details": "One capture at a time. Exporting mid-walk gets a 'Still extracting' message."
     },
     {
       "id": "e11",
@@ -1101,7 +1904,7 @@
       "protocol": "function call",
       "mode": "async",
       "payload": "{ node, diag, registry, parent, rect, position }; onProgress(fraction)",
-      "details": "Progress is reported at each yield, at most once every 16ms."
+      "details": "Progress updates at most once every 16ms."
     },
     {
       "id": "e12",
@@ -1111,7 +1914,7 @@
       "protocol": "DOM / CSSOM APIs",
       "mode": "sync",
       "payload": "getComputedStyle, cssRules, querySelectorAll per rule, getBoundingClientRect, toDataURL, currentSrc",
-      "details": "Stylesheets scanned once per capture, cross-origin sheets skipped. Closed menus get revealed and restored."
+      "details": "Stylesheets read once per capture. Closed menus are revealed, then put back."
     },
     {
       "id": "e13",
@@ -1121,7 +1924,7 @@
       "protocol": "MutationObserver",
       "mode": "event",
       "payload": "childList and attribute records (style, class, hidden, aria-hidden, data-state, open, popover)",
-      "details": "Only on during selection mode. String-prefiltered, capped at 240 tracked layers."
+      "details": "Only during selection mode, capped at 240 tracked layers."
     },
     {
       "id": "e14",
@@ -1131,7 +1934,7 @@
       "protocol": "function call (same-origin iframe DOM)",
       "mode": "sync",
       "payload": "tag → default computed values under RESET_CSS",
-      "details": "Cached per tag. Static defaults step in if CSP blocks the iframe."
+      "details": "Cached per tag, with a fallback table if CSP blocks the iframe."
     },
     {
       "id": "e15",
@@ -1141,7 +1944,7 @@
       "protocol": "postMessage",
       "mode": "async",
       "payload": "{ __domheist: 'domheist-frame-hello', token }",
-      "details": "Sent to '*' because the frame's origin is unknown. The token carries no data."
+      "details": "Sent to any origin, since the frame's is unknown. The token carries no data."
     },
     {
       "id": "e16",
@@ -1151,7 +1954,7 @@
       "protocol": "chrome.runtime message",
       "mode": "async",
       "payload": "{ type: 'DOMHEIST_FRAME_HELLO', token }",
-      "details": "The worker remembers which frame sent it, for 30s. Messages without a tab are ignored."
+      "details": "The worker notes which frame sent it and forgets after 30 seconds."
     },
     {
       "id": "e17",
@@ -1161,7 +1964,7 @@
       "protocol": "chrome.runtime message",
       "mode": "sync",
       "payload": "DOMHEIST_EXPORT { payload }; DOMHEIST_CAPTURE_REMOTE { token, timeout: 4000 }; DOMHEIST_CAPTURE_TAB",
-      "details": "One retry after 150ms if the worker was asleep, 30s timeout. Failures report the payload size."
+      "details": "One retry after 150ms if the worker was asleep. Gives up at 30s."
     },
     {
       "id": "e18",
@@ -1171,7 +1974,7 @@
       "protocol": "chrome.runtime message",
       "mode": "sync",
       "payload": "DOMHEIST_CMD { cmd: 'grab', exact }; DOMHEIST_ACTIVE { active, paused }; DOMHEIST_OPEN_HISTORY",
-      "details": "Badge goes amber while selecting, blue while interacting. Cleared when the tab navigates or closes."
+      "details": "Sets the badge: amber while selecting, blue while interacting. Cleared on navigation."
     },
     {
       "id": "e19",
@@ -1180,8 +1983,8 @@
       "label": "broadcast to frames",
       "protocol": "chrome.tabs.sendMessage per frameId",
       "mode": "sync",
-      "payload": "DOMHEIST_START | CLEAR | GRAB | SELECT_BODY | TOAST",
-      "details": "Every frame gets a 4s timeout. Frames without a content script are skipped."
+      "payload": "DOMHEIST_START | CLEAR | GRAB | TOAST",
+      "details": "Every frame, 4s timeout each. Frames without the script get skipped."
     },
     {
       "id": "e20",
@@ -1191,7 +1994,7 @@
       "protocol": "chrome.tabs.sendMessage / response",
       "mode": "sync",
       "payload": "DOMHEIST_COLLECT → payload|null; replies to CAPTURE_REMOTE and CAPTURE_TAB",
-      "details": "A frame still mid-capture replies null rather than hand over a half-built payload."
+      "details": "Frames mid-capture reply null. Multiple payloads get merged into one."
     },
     {
       "id": "e21",
@@ -1201,7 +2004,7 @@
       "protocol": "chrome.tabs.sendMessage (frameId)",
       "mode": "sync",
       "payload": "→ { ok, payload, url }",
-      "details": "Sent only once the token's claimed, checked against the same tab, then deleted after one use."
+      "details": "Only after the token is claimed. Each token works exactly once."
     },
     {
       "id": "e22",
@@ -1221,7 +2024,7 @@
       "protocol": "HTTP (fetch)",
       "mode": "async",
       "payload": "@font-face URL → bytes → { url, path, ok, base64, mime }",
-      "details": "No credentials, 10s timeout, all in parallel. One broken font doesn't sink the rest."
+      "details": "No cookies, 10s timeout, all in parallel so one failure doesn't sink the rest."
     },
     {
       "id": "e24",
@@ -1231,7 +2034,7 @@
       "protocol": "IndexedDB transactions",
       "mode": "async",
       "payload": "meta rows and blob payloads",
-      "details": "Not awaited, so a history hiccup never breaks an export. Pruned to 10 and 60 MB."
+      "details": "Not awaited, so a history hiccup never breaks an export. Keeps 10 entries."
     },
     {
       "id": "e25",
@@ -1241,7 +2044,7 @@
       "protocol": "chrome.storage.session",
       "mode": "async",
       "payload": "{ 'payload:<exportId>': JSON }",
-      "details": "Only under 4 MB, quota errors ignored. Read only if the in-memory copy went missing."
+      "details": "Only under 4 MB. Read only if the in-memory copy got lost."
     },
     {
       "id": "e26",
@@ -1251,7 +2054,7 @@
       "protocol": "chrome.tabs.create",
       "mode": "async",
       "payload": "export.html?id=<cx…> | export.html?history=<id|list>",
-      "details": "If the tab can't open, the pending payload is deleted and the reason returned."
+      "details": "If the tab can't open, the payload is dropped and the reason returned."
     },
     {
       "id": "e27",
@@ -1261,7 +2064,7 @@
       "protocol": "chrome.runtime message",
       "mode": "sync",
       "payload": "DOMHEIST_GET_PAYLOAD / RELEASE_PAYLOAD; HISTORY_LIST / GET / DELETE; FETCH_FONT { url, path, mime }",
-      "details": "An expired payload says 'Re-run the export from the page'. Failed fonts get one retry before zipping."
+      "details": "Each failed font gets one retry before zipping. Expired payloads ask you to re-run."
     },
     {
       "id": "e28",
@@ -1271,7 +2074,7 @@
       "protocol": "function call",
       "mode": "sync",
       "payload": "HtmlWriter.build(payload, opts) → HTML; ToonWriter.toToon(payload) → TOON",
-      "details": "Saved HTML uses relative font paths, the preview inlines them. Toggling Interactive rebuilds both."
+      "details": "Saved HTML gets relative font paths, the preview gets inline fonts."
     },
     {
       "id": "e29",
@@ -1281,7 +2084,7 @@
       "protocol": "iframe srcdoc",
       "mode": "sync",
       "payload": "Full HTML document with inline fonts and <base target=\"_blank\">",
-      "details": "Auto-sized on load, then again at 120ms and 600ms. Fixed widths that don't fit get scaled down."
+      "details": "Sized to fit on load, then rechecked at 120ms and 600ms."
     },
     {
       "id": "e30",
@@ -1291,7 +2094,7 @@
       "protocol": "HTTP",
       "mode": "async",
       "payload": "fonts.googleapis.com css2 per family; icon CSS on cdnjs/jsDelivr",
-      "details": "The saved preview.html makes the same requests whenever you open it later."
+      "details": "The saved preview.html makes the same requests when opened later."
     },
     {
       "id": "e31",
@@ -1301,37 +2104,44 @@
       "protocol": "chrome.downloads API",
       "mode": "async",
       "payload": "{ url: blob:…, filename: preview.html | component.toon | preview-fonts.zip, saveAs: false }",
-      "details": "Polls every 120ms for up to 8s, then copies the absolute path to your clipboard."
+      "details": "Polls every 120ms for up to 8s, then copies the file path."
+    }
+  ],
+  "groups": [
+    {
+      "id": "pick",
+      "label": "Picking a thing",
+      "features": [
+        "point-and-capture"
+      ]
     },
     {
-      "id": "e32",
-      "from": "toon-cli",
-      "to": "serializers",
-      "label": "parseToon → build",
-      "protocol": "function call (Node require)",
-      "mode": "sync",
-      "payload": "TOON text → payload → HTML",
-      "details": "The very same lib files the extension uses, thanks to their UMD-style tails."
+      "id": "read",
+      "label": "Reading the page",
+      "features": [
+        "dom-walk",
+        "hover-pseudo-animation",
+        "shadow-svg-media",
+        "font-fidelity"
+      ]
     },
     {
-      "id": "e33",
-      "from": "test-harness",
-      "to": "capture-engine",
-      "label": "drives via CDP",
-      "protocol": "Chrome DevTools Protocol (WebSocket)",
-      "mode": "sync",
-      "payload": "Runtime.evaluate and script injection; calls on window.__domheist",
-      "details": "Scripts are cache-busted so stale files never get tested. Exports are checked inside the real sandbox."
+      "id": "tricky",
+      "label": "The tricky bits",
+      "features": [
+        "hover-grab",
+        "menus-and-dropdowns",
+        "cross-origin-iframes",
+        "full-page-multi-frame",
+        "pixel-recovery"
+      ]
     },
     {
-      "id": "e34",
-      "from": "test-harness",
-      "to": "service-worker",
-      "label": "loads in node:vm",
-      "protocol": "node:vm (in-process)",
-      "mode": "sync",
-      "payload": "background.js with a stubbed chrome.*",
-      "details": "Tests the export path and guard() errors, which would otherwise show up as a bare 'Export failed'."
+      "id": "out",
+      "label": "Getting it out",
+      "features": [
+        "export-and-preview"
+      ]
     }
   ]
 }

@@ -60,6 +60,19 @@
   cursor: pointer;
 }
 
+/* A history row's popup trigger: a real button for keyboards, but it reads as the role text. */
+.history_arch {
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  text-align: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
 .heading-mask.is-hover .heading-mask_el__masking {
   clip-path: inset(0);
   transition: clip-path var(--dur-mask-in) var(--ease-out);

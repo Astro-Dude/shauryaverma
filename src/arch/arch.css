@@ -2,11 +2,11 @@
  * "How it works" popup.
  *
  * A different world from the page behind it on purpose: the site is dark and cinematic, this is
- * warm paper and engineering drawings. The system follows a neo-brutalist reference:
+ * frosted paper and engineering drawings. The system follows a neo-brutalist reference:
  *   - paper #fafafa with a faint grid, black 1px lines, hard 5px offset shadows, no soft shadows;
  *   - Geist for words, Geist Mono for labels, numbers and anything that reads like a readout;
- *   - orange is the voice (headline, numbers, what is moving), chartreuse is the highlighter
- *     (the step being played), everything else is black and greys;
+ *   - the site's orange is the voice (headline, numbers, what is moving), a pale wash of it is
+ *     the highlighter (the step being played), everything else is black and greys;
  *   - radii are 12px (cards), 4px (small things) or fully round (pills). Nothing else.
  */
 
@@ -16,8 +16,10 @@
   --p-steel: #6c6c6c;
   --p-ash: #b3b3b3;
   --p-line: rgba(0, 0, 0, 0.12);
-  --p-orange: #ff5b29;
-  --p-lime: #f5ff80;
+  /* The portfolio's own red-orange, so the popup reads as part of the site. */
+  --p-orange: #eb5939;
+  /* The highlighter: the same orange, washed out enough to read black text through. */
+  --p-hl: #fbd5ca;
   --p-shadow: 5px 5px 0 0 #000;
   --p-sans: 'Geist Sans', ui-sans-serif, system-ui, sans-serif;
   --p-mono: 'Geist Mono', ui-monospace, 'SF Mono', Menlo, monospace;
@@ -76,7 +78,7 @@ html.arch-open body {
 }
 
 .arch ::selection {
-  background: var(--p-lime);
+  background: var(--p-hl);
   color: var(--p-ink);
 }
 
@@ -85,34 +87,31 @@ html.arch-open body {
 .arch_backdrop {
   position: absolute;
   inset: 0;
-  background: rgba(8, 8, 8, 0.55);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
+  background: rgba(8, 8, 8, 0.28);
 }
 
+/*
+ * Frosted glass, macOS-style: the portfolio stays visible behind the panel, blurred and lifted
+ * toward white. The cards inside are solid paper, so reading is never fighting the page behind.
+ */
 .arch_panel {
   position: relative;
-  width: calc(100vw - 120px);
+  width: calc(100vw - 200px);
   height: calc(100dvh - 96px);
   outline: none;
-  background-color: var(--p-paper);
-  background-image:
-    linear-gradient(var(--p-line) 1px, transparent 1px),
-    linear-gradient(90deg, var(--p-line) 1px, transparent 1px);
-  background-size: 32px 32px;
-  background-position: -1px -1px;
+  background-color: rgba(250, 250, 250, 0.76);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
   border: 1px solid var(--p-ink);
   border-radius: 12px;
   overflow: hidden;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
 }
 
-/* The grid is texture, not content: fade it so it never competes with the diagrams. */
-.arch_panel::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: rgba(250, 250, 250, 0.72);
-  pointer-events: none;
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .arch_panel {
+    background-color: rgba(250, 250, 250, 0.96);
+  }
 }
 
 .arch_bar {
@@ -125,7 +124,7 @@ html.arch-open body {
   justify-content: space-between;
   gap: 16px;
   padding: 0 16px 0 24px;
-  background: var(--p-paper);
+  background: rgba(250, 250, 250, 0.7);
   border-bottom: 1px solid var(--p-ink);
 }
 
@@ -227,10 +226,8 @@ html.arch-open body {
 
 .arch-layout {
   display: grid;
-  grid-template-columns: 200px minmax(0, 1fr);
+  grid-template-columns: 210px minmax(0, 1fr);
   gap: 40px;
-  max-width: 1360px;
-  margin: 0 auto;
   padding: 0 40px;
 }
 
@@ -259,7 +256,15 @@ html.arch-open body {
 }
 
 .arch-index ol {
-  margin-top: 12px;
+  margin-top: 8px;
+}
+
+.arch-index_group + .arch-index_group {
+  margin-top: 20px;
+}
+
+.arch-index_tail {
+  margin-top: 20px !important;
 }
 
 .arch-index_item {
@@ -293,7 +298,6 @@ html.arch-open body {
 }
 
 .arch-index_item.is-secondary {
-  margin-top: 12px;
   padding-top: 14px;
   border-top: 1px solid var(--p-ink);
 }
@@ -337,6 +341,29 @@ html.arch-open body {
   color: var(--p-steel);
 }
 
+/* ------------------------------------------------------------------ groups */
+
+.arch-group {
+  padding-top: 16px;
+}
+
+.arch-group_title {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin: 24px 0 24px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--p-ink);
+  font: 700 clamp(24px, 2.2vw, 32px)/1.1 var(--p-sans);
+  letter-spacing: -0.02em;
+}
+
+.arch-group_title span {
+  font: 500 13px var(--p-mono);
+  letter-spacing: 0.06em;
+  color: var(--p-orange);
+}
+
 /* ------------------------------------------------------------------ feature card */
 
 .arch-feature {
@@ -364,7 +391,7 @@ html.arch-open body {
   align-items: center;
   flex-wrap: wrap;
   gap: 12px;
-  font: 700 clamp(26px, 2.4vw, 34px)/1.15 var(--p-sans);
+  font: 700 clamp(22px, 2vw, 28px)/1.15 var(--p-sans);
   letter-spacing: -0.02em;
 }
 
@@ -395,14 +422,11 @@ html.arch-open body {
   align-items: start;
 }
 
-.arch-feature_grid.is-wide {
-  grid-template-columns: minmax(0, 1fr);
-}
-
 .arch-feature_chart,
 .arch-system_chart {
   position: relative;
-  padding: 28px 16px;
+  /* No padding: the drawing reaches the frame, so anything panned or zoomed clips at the border. */
+  padding: 0;
   border: 1px solid var(--p-ink);
   border-radius: 12px;
   background:
@@ -437,19 +461,15 @@ html.arch-open body {
 }
 
 .arch-play_icon {
-  font-size: 10px;
-  line-height: 1;
+  display: grid;
+  place-items: center;
+  width: 12px;
+  height: 12px;
 }
 
 .arch-play:hover {
   transform: translate(-2px, -2px);
   box-shadow: 2px 2px 0 0 var(--p-orange);
-}
-
-.arch-feature_grid.is-wide .arch-steps {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  column-gap: 32px;
 }
 
 .arch-step_btn {
@@ -476,7 +496,7 @@ html.arch-open body {
 /* The highlighter: a chartreuse marker stroke that sweeps across the step being played. */
 .arch-step_text mark {
   color: inherit;
-  background: linear-gradient(var(--p-lime), var(--p-lime)) no-repeat 0 0 / 0% 100%;
+  background: linear-gradient(var(--p-hl), var(--p-hl)) no-repeat 0 0 / 0% 100%;
   -webkit-box-decoration-break: clone;
   box-decoration-break: clone;
   padding: 1px 2px;
@@ -503,6 +523,122 @@ html.arch-open body {
 
 .arch-step.is-on .arch-step_text mark {
   background-size: 100% 100%;
+}
+
+/* Step notes: the clever bit of a hop, revealed while it plays or once clicked. */
+.arch-step_body {
+  display: grid;
+  gap: 6px;
+}
+
+.arch-step_note {
+  display: none;
+  padding: 8px 10px;
+  border-left: 2px solid var(--p-orange);
+  background: rgba(235, 89, 57, 0.06);
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--p-ink);
+}
+
+.arch-step_note_k {
+  font: 500 11px var(--p-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--p-orange);
+}
+
+.arch-step.is-on .arch-step_note {
+  display: block;
+}
+
+.arch-step.has-note .arch-step_n::after {
+  content: ' +';
+  color: var(--p-orange);
+}
+
+/* Deep dive: the algorithm, how it runs, an example and the reasoning. */
+.arch-deep {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 32px;
+  margin-top: 32px;
+  padding-top: 28px;
+  border-top: 1px solid var(--p-ink);
+}
+
+.arch-deep_k {
+  font: 500 12px var(--p-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--p-orange);
+}
+
+.arch-deep_algo {
+  margin-top: 8px !important;
+  font: 700 20px/1.25 var(--p-sans);
+  letter-spacing: -0.02em;
+}
+
+.arch-deep_idea {
+  margin-top: 8px !important;
+  font: 500 16px/1.5 var(--p-sans);
+}
+
+.arch-deep_how {
+  counter-reset: how;
+  display: grid;
+  gap: 10px;
+  margin-top: 16px !important;
+}
+
+.arch-deep_how li {
+  counter-increment: how;
+  display: grid;
+  grid-template-columns: 30px 1fr;
+  font-size: 14.5px;
+  line-height: 1.55;
+}
+
+.arch-deep_how li::before {
+  content: counter(how, decimal-leading-zero);
+  font: 500 12px/1.9 var(--p-mono);
+  color: var(--p-steel);
+}
+
+.arch-deep_side {
+  display: grid;
+  gap: 20px;
+  align-content: start;
+}
+
+.arch-deep_ex {
+  margin-top: 8px !important;
+  padding: 14px 16px;
+  border: 1px solid var(--p-ink);
+  border-radius: 12px;
+  background: var(--p-ink);
+  color: var(--p-paper);
+  font: 400 12.5px/1.6 var(--p-mono);
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
+.arch-deep_why {
+  margin-top: 8px !important;
+  font-size: 14.5px;
+  line-height: 1.6;
+}
+
+.arch-deep_cost {
+  font: 400 12.5px/1.5 var(--p-mono);
+  color: var(--p-steel);
+}
+
+.arch-deep_cost span {
+  color: var(--p-ink);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 /* Nerd corner */
@@ -545,14 +681,76 @@ html.arch-open body {
 
 .arch-nerd_body {
   display: grid;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
-  gap: 32px;
+  gap: 8px;
   padding-top: 16px;
 }
 
-.arch-nerd_body > p {
+.arch-nerd .arch-deep {
+  margin-top: 16px;
+}
+
+.arch-nerd_text {
   font-size: 15px;
   line-height: 1.6;
+}
+
+/* Algorithm write-ups: the deep end, kept technical on purpose. */
+.arch-algos {
+  display: grid;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.arch-algo {
+  padding: 16px 18px;
+  border: 1px solid var(--p-ink);
+  border-radius: 12px;
+  background: var(--p-paper);
+}
+
+.arch-algo_name {
+  font: 600 13px var(--p-mono);
+}
+
+.arch-algo_sum {
+  margin-top: 6px;
+  font-size: 14px;
+  color: var(--p-steel);
+}
+
+.arch-algo_steps {
+  counter-reset: algo;
+  display: grid;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.arch-algo_steps li {
+  counter-increment: algo;
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  font-size: 13.5px;
+  line-height: 1.55;
+}
+
+.arch-algo_steps li::before {
+  content: counter(algo, decimal-leading-zero);
+  font: 500 12px/1.75 var(--p-mono);
+  color: var(--p-orange);
+}
+
+.arch-algo_cx {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--p-ink);
+  font: 400 12px/1.5 var(--p-mono);
+  color: var(--p-steel);
+}
+
+.arch-algo_cx span {
+  color: var(--p-ink);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .arch-files {
@@ -581,10 +779,7 @@ html.arch-open body {
 
 .arch-svg {
   display: block;
-  margin: 0 auto;
   width: 100%;
-  max-width: var(--natural-w);
-  height: auto;
   overflow: hidden;
   cursor: grab;
   touch-action: pan-y;
@@ -644,6 +839,36 @@ html.arch-open body {
   stroke-linejoin: round;
 }
 
+.arch-node_shadow {
+  fill: var(--p-ink);
+  stroke: none;
+}
+
+.arch-node_detail {
+  fill: none;
+  stroke: var(--p-ink);
+  stroke-width: 1.1;
+  stroke-linecap: round;
+}
+
+.arch-node_dot {
+  fill: var(--p-paper);
+  stroke: var(--p-ink);
+  stroke-width: 1;
+}
+
+.arch-node_led {
+  fill: var(--p-paper);
+  stroke: var(--p-ink);
+  stroke-width: 1;
+  transition: fill 0.2s;
+}
+
+.arch-node.is-lit .arch-node_led,
+.arch-node:hover .arch-node_led {
+  fill: var(--p-orange);
+}
+
 .kind-actor .arch-node_box {
   stroke-dasharray: 4 3;
 }
@@ -682,12 +907,12 @@ html.arch-open body {
 
 .arch-node.is-lit .arch-node_top,
 .arch-node:hover .arch-node_top {
-  fill: var(--p-lime);
+  fill: var(--p-hl);
 }
 
 .arch-node.is-current .arch-node_box,
 .arch-node.is-selected .arch-node_box {
-  fill: var(--p-lime);
+  fill: var(--p-hl);
   stroke: var(--p-ink);
   stroke-width: 2;
 }
@@ -786,7 +1011,7 @@ html.arch-open body {
 }
 
 .arch-edge_label.is-current .arch-edge_pill rect {
-  fill: var(--p-lime);
+  fill: var(--p-hl);
 }
 
 .arch-svg.has-focus .arch-node:not(.is-lit) {
@@ -878,6 +1103,7 @@ html.arch-open body {
 
 .arch-drawer_close {
   position: absolute;
+  z-index: 2;
   top: 16px;
   right: 16px;
   width: 30px;
@@ -926,10 +1152,25 @@ html.arch-open body {
   color: var(--p-steel);
 }
 
+.arch-drawer_here {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--p-ink);
+  border-radius: 12px;
+  background: var(--p-paper);
+  box-shadow: 3px 3px 0 0 var(--p-orange);
+}
+
+.arch-drawer_here p + p {
+  margin-top: 6px;
+  font-size: 15px;
+  line-height: 1.55;
+}
+
 .arch-drawer_fun {
   margin-top: 20px;
   padding: 14px 16px;
-  background: var(--p-lime);
+  background: var(--p-hl);
   border: 1px solid var(--p-ink);
   border-radius: 12px;
 }
@@ -1002,6 +1243,311 @@ html.arch-open body {
   white-space: pre-wrap;
 }
 
+/* ------------------------------------------------------------------ journey (a job, told in order) */
+
+.arch-journey {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 40px;
+  padding: 0 40px;
+}
+
+.arch-journey_story {
+  min-width: 0;
+  padding-bottom: 40vh;
+}
+
+.arch-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 0;
+  margin-top: 32px;
+  border: 1px solid var(--p-ink);
+  border-radius: 12px;
+  background: var(--p-paper);
+  box-shadow: var(--p-shadow);
+  overflow: hidden;
+}
+
+.arch-stat {
+  padding: 16px 18px;
+  border-right: 1px solid var(--p-ink);
+}
+
+.arch-stat:last-child {
+  border-right: 0;
+}
+
+.arch-stat dt {
+  font: 700 clamp(26px, 2.4vw, 34px)/1 var(--p-sans);
+  letter-spacing: -0.03em;
+  color: var(--p-orange);
+}
+
+.arch-stat dd {
+  margin: 8px 0 0;
+  font: 500 11px/1.35 var(--p-mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--p-steel);
+}
+
+.arch-chapters {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.arch-ch {
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  gap: 20px;
+  padding: 36px 0;
+  border-top: 1px solid var(--p-ink);
+  cursor: pointer;
+}
+
+.arch-ch_mark {
+  display: grid;
+  align-content: start;
+  gap: 6px;
+}
+
+.arch-ch_n {
+  font: 700 40px/1 var(--p-sans);
+  letter-spacing: -0.04em;
+  color: var(--p-ash);
+  transition: color 0.3s;
+}
+
+.arch-ch.is-active .arch-ch_n {
+  color: var(--p-orange);
+}
+
+.arch-ch_when {
+  font: 500 11px/1.4 var(--p-mono);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--p-steel);
+}
+
+.arch-ch_body {
+  min-width: 0;
+  opacity: 0.55;
+  transition: opacity 0.35s;
+}
+
+.arch-ch.is-active .arch-ch_body,
+.arch-ch:hover .arch-ch_body {
+  opacity: 1;
+}
+
+.arch-ch_title {
+  font: 700 clamp(22px, 2vw, 28px)/1.15 var(--p-sans);
+  letter-spacing: -0.02em;
+}
+
+.arch-ch_role {
+  display: inline-block;
+  margin-top: 10px;
+  padding: 3px 10px;
+  border: 1px solid var(--p-ink);
+  border-radius: 9999px;
+  background: var(--p-hl);
+  font: 500 11px var(--p-mono);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.arch-ch_sum {
+  margin-top: 14px;
+  font: 500 17px/1.45 var(--p-sans);
+  letter-spacing: -0.01em;
+}
+
+.arch-ch_points {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.arch-ch_points li {
+  position: relative;
+  padding-left: 20px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--p-steel);
+}
+
+.arch-ch_points li::before {
+  content: '→';
+  position: absolute;
+  left: 0;
+  font-family: var(--p-mono);
+  color: var(--p-ink);
+}
+
+.arch-ch_skills {
+  margin-top: 18px;
+}
+
+.arch-ch_skills .arch-tagpill {
+  font-size: 11px;
+  background: var(--p-paper);
+}
+
+.arch-phases {
+  margin-top: 22px;
+  border: 1px solid var(--p-ink);
+  border-radius: 12px;
+  background: var(--p-paper);
+  overflow: hidden;
+}
+
+.arch-phases_k {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--p-ink);
+  font: 500 12px var(--p-mono);
+  letter-spacing: 0.04em;
+  color: var(--p-steel);
+}
+
+.arch-phases ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.arch-phase {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 10px;
+  padding: 11px 16px;
+  outline: none;
+  cursor: default;
+  transition: background-color 0.2s;
+}
+
+.arch-phase + .arch-phase {
+  border-top: 1px dashed var(--p-line);
+}
+
+.arch-phase.is-on,
+.arch-phase:focus-visible {
+  background: var(--p-hl);
+}
+
+.arch-phase_n {
+  font: 600 13px/1.5 var(--p-mono);
+  color: var(--p-orange);
+}
+
+.arch-phase_body {
+  display: grid;
+  gap: 2px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--p-steel);
+}
+
+.arch-phase_body strong {
+  font-weight: 600;
+  color: var(--p-ink);
+}
+
+.arch-phases_note {
+  padding: 10px 16px 12px;
+  border-top: 1px solid var(--p-ink);
+  font: 400 12px/1.5 var(--p-mono);
+  color: var(--p-steel);
+}
+
+/* The map: drawn once, pinned beside the chapters, with a camera that follows the reading. */
+.arch-map {
+  position: sticky;
+  top: 24px;
+  align-self: start;
+  height: calc(100dvh - 96px - 64px - 48px);
+  margin: 24px 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  border: 1px solid var(--p-ink);
+  border-radius: 12px;
+  background: var(--p-paper);
+  box-shadow: var(--p-shadow);
+  overflow: hidden;
+}
+
+.arch-map_caption {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--p-ink);
+  font: 500 12px var(--p-mono);
+  letter-spacing: 0.04em;
+  color: var(--p-steel);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.arch-map .arch-chart {
+  height: 100%;
+  min-height: 0;
+}
+
+.arch-map .arch-svg {
+  width: 100%;
+  height: 100% !important;
+}
+
+@media (max-width: 1100px) {
+  .arch-journey {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 0 24px;
+  }
+
+  /* Map first, pinned to the top; the story scrolls up underneath it. */
+  .arch-map {
+    order: -1;
+    top: 0;
+    z-index: 2;
+    height: 42dvh;
+    margin: 12px 0 0;
+  }
+
+  .arch-journey_story {
+    padding-bottom: 30vh;
+  }
+}
+
+@media (max-width: 700px) {
+  .arch-journey {
+    padding: 0 12px;
+  }
+
+  .arch-ch {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .arch-ch_mark {
+    grid-auto-flow: column;
+    justify-content: start;
+    align-items: baseline;
+    gap: 12px;
+  }
+
+  .arch-ch_n {
+    font-size: 28px;
+  }
+
+  .arch-stat {
+    border-right: 0;
+    border-bottom: 1px solid var(--p-ink);
+  }
+}
+
 /* ------------------------------------------------------------------ small screens */
 
 @media (max-width: 1100px) {
@@ -1064,11 +1610,9 @@ html.arch-open body {
     box-shadow: 3px 3px 0 0 #000;
   }
 
-  .arch-feature_chart {
-    padding: 16px 4px;
-  }
 
-  .arch-nerd_body {
+  .arch-nerd_body,
+  .arch-deep {
     grid-template-columns: minmax(0, 1fr);
     gap: 16px;
   }

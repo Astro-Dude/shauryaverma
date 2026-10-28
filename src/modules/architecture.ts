@@ -1,9 +1,9 @@
 /**
- * Project rows that open a "how it works" popup.
+ * Rows that open a "how it works" popup: project rows, and history rows for a job with a write-up.
  *
- * A row whose link carries `data-arch` keeps its real href, so without JavaScript (or with a
- * modifier key held) it still goes straight to the project. A plain click anywhere on the row
- * opens the popup instead, and the popup carries the live and repo links in its corner.
+ * A project row's link carries `data-arch` and keeps its real href, so without JavaScript (or with
+ * a modifier key held) it still goes straight to the project; the popup carries the live and repo
+ * links in its corner. A history row has nowhere else to go, so its trigger is a plain button.
  *
  * The popup code and each project's doc are separate chunks, fetched on first hover so the click
  * itself rarely waits. None of it is on the page's critical path.
@@ -31,7 +31,7 @@ export function initArchitecture(root: ParentNode = document): void {
   // two copies of the link. Bind the row once; the listener catches clicks on either copy.
   const bound = new WeakSet<HTMLElement>();
 
-  root.querySelectorAll<HTMLAnchorElement>('a[data-arch]').forEach((link) => {
+  root.querySelectorAll<HTMLElement>('[data-arch]').forEach((link) => {
     const key = link.dataset.arch!;
     if (!docs[`../data/architecture/${key}.json`]) return;
     const row = link.closest<HTMLElement>('.heading-mask') ?? link;
@@ -52,7 +52,7 @@ export function initArchitecture(root: ParentNode = document): void {
       try {
         const [{ openArchitecture }, doc] = await Promise.all([loadPopup(), loadDoc(key)]);
         if (!doc) {
-          window.open(link.href, '_blank', 'noopener');
+          if (link instanceof HTMLAnchorElement) window.open(link.href, '_blank', 'noopener');
           return;
         }
         lockScroll(true);

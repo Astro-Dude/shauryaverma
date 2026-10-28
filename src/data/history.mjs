@@ -9,14 +9,18 @@
  * and the full range rides the small line with the org, where there is room at every width.
  */
 
-/** @type {{year: string, role: string, redRole: string, org: string, range: string}[]} */
+/**
+ * `arch` names a "how it works" doc in src/data/architecture/, and makes the row open it.
+ * @type {{year: string, role: string, redRole: string, org: string, range: string, arch?: string}[]}
+ */
 export const history = [
   {
     year: 'NOW',
     role: 'Founding SDE Intern',
     redRole: 'Professional App Impersonator',
-    org: 'Scaler AI Labs',
+    org: 'Evaratus (formerly Scaler AI Labs)',
     range: 'Nov 2025 - now',
+    arch: 'evaratus',
   },
   {
     year: '2025',

@@ -1,0 +1,1614 @@
+{
+  "tagline": {
+    "text": "Google Drive, but your files live in your own Telegram, GitHub or S3.",
+    "src": "c80d067a30f4"
+  },
+  "summary": {
+    "text": "BYOS is a drive cut in half. Postgres remembers everything about your files; the bytes go to storage you already own. One Telegram code makes your account and connects your storage. Bao, an agent on your own LLM key, answers with checked citations and drafts changes as plans you approve.",
+    "src": "27af9273700f"
+  },
+  "features.telegram-sign-up.summary": {
+    "text": "One Telegram code makes your account and plugs in your storage.",
+    "src": "3d630d89848e"
+  },
+  "features.telegram-sign-up.description": {
+    "text": "Pick a username and password, enter your phone, then type the code Telegram sends inside the app (not by SMS). Got two-step verification on? There's one more password step. Errors say what actually went wrong, like a taken username.",
+    "src": "e04570ed5ee4"
+  },
+  "features.telegram-sign-up.underTheHood": {
+    "text": "No user exists until the code checks out, so the half-finished sign-up rides in the browser as a Fernet-encrypted ticket that dies in 10 minutes. The server keeps zero pending state. On success, the user and their Telegram storage are created in one commit.",
+    "src": "4a1cc67de32c"
+  },
+  "features.telegram-sign-up.steps.0.narration": {
+    "text": "You pick a username and password. The page checks the password rules before bothering the server.",
+    "src": "2abd6ecdb647"
+  },
+  "features.telegram-sign-up.steps.1.label": {
+    "text": "sends sign-up details",
+    "src": "a6bd3df51812"
+  },
+  "features.telegram-sign-up.steps.1.narration": {
+    "text": "The server checks the username is free, then hashes the password straight into the ticket.",
+    "src": "f0566587fbea"
+  },
+  "features.telegram-sign-up.steps.2.label": {
+    "text": "asks for a code",
+    "src": "76ae320a9d5b"
+  },
+  "features.telegram-sign-up.steps.2.narration": {
+    "text": "Telegram sends the code to your Telegram app. No SMS involved.",
+    "src": "1f7bd3294488"
+  },
+  "features.telegram-sign-up.steps.3.narration": {
+    "text": "The browser holds the whole half-finished sign-up for 10 minutes. The server remembers nothing.",
+    "src": "3440647df32a"
+  },
+  "features.telegram-sign-up.steps.4.label": {
+    "text": "sends the code",
+    "src": "da9bf0a4d92a"
+  },
+  "features.telegram-sign-up.steps.4.narration": {
+    "text": "The code goes back with the ticket. If your Telegram has 2FA, it asks for that password too.",
+    "src": "f18cc060f8de"
+  },
+  "features.telegram-sign-up.steps.5.narration": {
+    "text": "One transaction creates your account and hooks up Telegram as storage. All or nothing.",
+    "src": "3dfc6b4c8526"
+  },
+  "features.telegram-sign-up.steps.6.label": {
+    "text": "tokens + cookie",
+    "src": "dd493f7b026d"
+  },
+  "features.telegram-sign-up.steps.6.narration": {
+    "text": "You get a 15-minute access token kept in memory, plus a refresh cookie JavaScript can't touch.",
+    "src": "e9e2038123a5"
+  },
+  "features.login.summary": {
+    "text": "Password or Telegram code. Dead Telegram sessions get caught at the door.",
+    "src": "cd39116a9def"
+  },
+  "features.login.description": {
+    "text": "Two tabs: password, or a Telegram code. Logging in with a code adds a device, a password doesn't. If you ended your Telegram sessions, the password login spots it and sends a fresh code instead.",
+    "src": "2664b66755d1"
+  },
+  "features.login.underTheHood": {
+    "text": "Checking a password needs nothing from Telegram, so you could land in an account whose storage is dead. So after the Argon2 check, BYOS calls telegram_session_alive. If the session is gone, you get a code instead of a session.",
+    "src": "de02bc217a65"
+  },
+  "features.login.steps.0.narration": {
+    "text": "You type your username or phone, and your password.",
+    "src": "e96a47a4127a"
+  },
+  "features.login.steps.1.label": {
+    "text": "sends credentials",
+    "src": "494f7ec80cf0"
+  },
+  "features.login.steps.1.narration": {
+    "text": "Rate-limited to 20 tries a minute per IP, for the optimists.",
+    "src": "34af6e789fc4"
+  },
+  "features.login.steps.2.narration": {
+    "text": "Argon2 compares what you typed against the stored hash.",
+    "src": "4d22f2d8df47"
+  },
+  "features.login.steps.3.narration": {
+    "text": "If you ended your Telegram sessions, BYOS notices here and sends a fresh code instead.",
+    "src": "2357805beefe"
+  },
+  "features.login.steps.4.narration": {
+    "text": "You either get your tokens, or a code and a polite note saying Telegram logged you out.",
+    "src": "125c406aaa2e"
+  },
+  "features.upload-to-your-storage.summary": {
+    "text": "Drop files in. Bytes go to your storage; BYOS keeps the receipts.",
+    "src": "ab3ee4845920"
+  },
+  "features.upload-to-your-storage.description": {
+    "text": "Pick files or drag them in. They upload 3 at a time with a progress tray. Over 2 GB? Rejected in the browser. Upload the same file twice into one folder and you still get one copy.",
+    "src": "e1e199dabbf5"
+  },
+  "features.upload-to-your-storage.underTheHood": {
+    "text": "The browser uses XMLHttpRequest because fetch has no upload progress events. The server checks everything first, then streams 1 MiB chunks to your storage, hashing as it goes. The file and its first version are saved in one commit, and if that fails the stored object is deleted.",
+    "src": "d566fa086fe7"
+  },
+  "features.upload-to-your-storage.steps.0.narration": {
+    "text": "Three upload workers start, and each file gets its own row in the tray.",
+    "src": "5b0104ecc9f6"
+  },
+  "features.upload-to-your-storage.steps.1.label": {
+    "text": "file over XHR",
+    "src": "c8466004334f"
+  },
+  "features.upload-to-your-storage.steps.1.narration": {
+    "text": "The tray percentage comes straight from the upload's progress events.",
+    "src": "b0c7c7ca0bbe"
+  },
+  "features.upload-to-your-storage.steps.2.narration": {
+    "text": "Size and folder checks happen before a single byte moves anywhere.",
+    "src": "f812199a33bd"
+  },
+  "features.upload-to-your-storage.steps.3.label": {
+    "text": "streams the bytes",
+    "src": "a249a0fed5c6"
+  },
+  "features.upload-to-your-storage.steps.3.narration": {
+    "text": "Bytes flow through in 1 MiB chunks, using your decrypted storage credentials.",
+    "src": "a145601c79f2"
+  },
+  "features.upload-to-your-storage.steps.4.label": {
+    "text": "sends to Saved Messages",
+    "src": "b927dc1986b2"
+  },
+  "features.upload-to-your-storage.steps.4.narration": {
+    "text": "Your file becomes a message to yourself in Telegram. BYOS just keeps the message id.",
+    "src": "a22f8583efe0"
+  },
+  "features.upload-to-your-storage.steps.5.label": {
+    "text": "file + version rows",
+    "src": "1d0cbc46a28f"
+  },
+  "features.upload-to-your-storage.steps.5.narration": {
+    "text": "Same file already here? The new copy gets deleted, otherwise the rows go in with one commit.",
+    "src": "ff27498fb903"
+  },
+  "features.upload-to-your-storage.steps.6.label": {
+    "text": "the new file",
+    "src": "a36d9f3fb4ba"
+  },
+  "features.upload-to-your-storage.steps.6.narration": {
+    "text": "The file pops into the list if you're still looking at that folder.",
+    "src": "c17a4698ac10"
+  },
+  "features.github-storage.summary": {
+    "text": "Your files become release assets in a GitHub repo BYOS makes.",
+    "src": "a8804328c47f"
+  },
+  "features.github-storage.description": {
+    "text": "Paste a GitHub token, name a repo and pick private or public. BYOS creates it, or reuses one you can push to. Files up to 2 GB each go there, and the card shows when the token expires.",
+    "src": "d2335a2f0ffc"
+  },
+  "features.github-storage.underTheHood": {
+    "text": "Files go in as release assets instead of commits. Commits cap at 100 MB and clog the history forever; assets take 2 GB and actually delete. Each UTC day gets its own prerelease, which keeps BYOS under GitHub's 1,000-assets-per-release limit.",
+    "src": "95b533f69e6f"
+  },
+  "features.github-storage.steps.0.narration": {
+    "text": "You paste a token and name a repo. The button stays off until the token looks like one.",
+    "src": "a07fdf283500"
+  },
+  "features.github-storage.steps.1.label": {
+    "text": "sends token + repo",
+    "src": "a5f87837827f"
+  },
+  "features.github-storage.steps.1.narration": {
+    "text": "Only a logged-in session can do this. API keys need not apply.",
+    "src": "6afb6a4a35a5"
+  },
+  "features.github-storage.steps.2.label": {
+    "text": "checks token, makes repo",
+    "src": "c58ae7c583a2"
+  },
+  "features.github-storage.steps.2.narration": {
+    "text": "BYOS checks who the token belongs to, then finds the repo or creates it, private unless you said otherwise.",
+    "src": "e027ace715c4"
+  },
+  "features.github-storage.steps.3.label": {
+    "text": "encrypted token",
+    "src": "7511dda8cd4d"
+  },
+  "features.github-storage.steps.3.narration": {
+    "text": "The token is stored encrypted. Reconnecting the same repo revives the old row instead of making a twin.",
+    "src": "18a720850d84"
+  },
+  "features.github-storage.steps.4.narration": {
+    "text": "The card shows the repo, whether it's private, usage and when the token expires.",
+    "src": "28b5f5eedec9"
+  },
+  "features.storage-health.summary": {
+    "text": "See what each storage holds, and hear about dead keys early.",
+    "src": "bff5547b57f9"
+  },
+  "features.storage-health.description": {
+    "text": "The sidebar shows how much each storage holds. A banner warns when a GitHub token expires within 14 days, or when keys stopped working and those files can't open. New uploads go to your default storage meanwhile.",
+    "src": "aa3311a01da2"
+  },
+  "features.storage-health.underTheHood": {
+    "text": "When GitHub or S3 rejects your keys, the adapter raises a typed error and the API's error handler flags that storage as expired, then returns a 409 with a proper error code. The browser fires an event and the Drive reloads its storage list. Telegram never gets this treatment, since it's also your login.",
+    "src": "971a598f88fd"
+  },
+  "features.storage-health.steps.0.narration": {
+    "text": "You open a file that lives on a storage whose keys were revoked.",
+    "src": "bfeb4f7e2f44"
+  },
+  "features.storage-health.steps.1.label": {
+    "text": "keys get rejected",
+    "src": "a571590f1452"
+  },
+  "features.storage-health.steps.1.narration": {
+    "text": "S3 says that access key doesn't exist anymore. Rude, but informative.",
+    "src": "684970738df6"
+  },
+  "features.storage-health.steps.2.label": {
+    "text": "flags as expired",
+    "src": "cda037a0b397"
+  },
+  "features.storage-health.steps.2.narration": {
+    "text": "That storage gets marked expired, so nobody has to find out the hard way twice.",
+    "src": "f793002bfc17"
+  },
+  "features.storage-health.steps.3.label": {
+    "text": "409 + error code",
+    "src": "d88d5025a809"
+  },
+  "features.storage-health.steps.3.narration": {
+    "text": "The error names the provider and the account, so the app knows exactly which one broke.",
+    "src": "f938140f7c0a"
+  },
+  "features.storage-health.steps.4.narration": {
+    "text": "The banner and sidebar card switch to Reconnect, with the right form one click away.",
+    "src": "00784e621b00"
+  },
+  "features.versions.summary": {
+    "text": "Replace a file and keep every old version around.",
+    "src": "47a5115a7279"
+  },
+  "features.versions.description": {
+    "text": "Upload a new version and the old ones stay listed with their size and time. Any older one can be restored instantly or downloaded. The current version can't be deleted, and replacing with identical content does nothing.",
+    "src": "f50042f92619"
+  },
+  "features.versions.underTheHood": {
+    "text": "Telegram can't edit a message in place, so the storage layer has no replace at all. A replace uploads fresh bytes, adds version N+1 and moves the current-version pointer in one transaction. Restoring an old version only moves the pointer.",
+    "src": "956740262be4"
+  },
+  "features.versions.steps.0.label": {
+    "text": "picks new file",
+    "src": "a7cf7b25a703"
+  },
+  "features.versions.steps.0.narration": {
+    "text": "You hit Replace in the Versions dialog and pick the new file.",
+    "src": "4bfcf2cf0885"
+  },
+  "features.versions.steps.1.label": {
+    "text": "uploads replacement",
+    "src": "1f0a60a4f774"
+  },
+  "features.versions.steps.1.narration": {
+    "text": "It goes to the same storage the file already lives on.",
+    "src": "085717942ad7"
+  },
+  "features.versions.steps.2.label": {
+    "text": "stores new object",
+    "src": "14dec3688db6"
+  },
+  "features.versions.steps.2.narration": {
+    "text": "Telegram can't edit a message, so a 'replace' is secretly a brand new message and a pointer swap.",
+    "src": "b59cd699c36b"
+  },
+  "features.versions.steps.3.label": {
+    "text": "moves the pointer",
+    "src": "30cf02091a80"
+  },
+  "features.versions.steps.3.narration": {
+    "text": "Same content changes nothing. Otherwise it gets a new version number and the pointer moves to it.",
+    "src": "ae9d2dc9b870"
+  },
+  "features.versions.steps.4.narration": {
+    "text": "Older versions sit in the list, ready to be restored or deleted.",
+    "src": "45b0919e1d66"
+  },
+  "features.folders.summary": {
+    "text": "Folders inside folders inside folders, with breadcrumbs so you don't get lost.",
+    "src": "cb341bb5aa74"
+  },
+  "features.folders.description": {
+    "text": "Folders nest as deep as you like and show their total size. Drag one onto another to move it, but not into itself, nice try. Deleting a folder takes everything inside it and runs in the background.",
+    "src": "51890300e94a"
+  },
+  "features.folders.underTheHood": {
+    "text": "Folders are a plain parent_id list. Breadcrumbs and the can't-move-into-yourself check are recursive SQL queries. Deleting walks the whole subtree and removes every file's bytes from your storage before the records go, so nothing is left lying around.",
+    "src": "264854b86508"
+  },
+  "features.folders.steps.0.narration": {
+    "text": "You confirm the delete. The folder vanishes from view right away.",
+    "src": "d3beff8359fa"
+  },
+  "features.folders.steps.1.label": {
+    "text": "delete request",
+    "src": "93e6168fffb1"
+  },
+  "features.folders.steps.1.narration": {
+    "text": "The real work runs in the background behind a red progress pill.",
+    "src": "dbd5f9212262"
+  },
+  "features.folders.steps.2.label": {
+    "text": "walks the subtree",
+    "src": "011b24e0e714"
+  },
+  "features.folders.steps.2.narration": {
+    "text": "It collects every nested folder and every file inside them.",
+    "src": "a7e18317f147"
+  },
+  "features.folders.steps.3.label": {
+    "text": "deletes the bytes",
+    "src": "b6f33beabbde"
+  },
+  "features.folders.steps.3.narration": {
+    "text": "Each file's versions are deleted from your storage first, so nothing gets orphaned.",
+    "src": "5bfc717e7972"
+  },
+  "features.folders.steps.4.label": {
+    "text": "deletes messages",
+    "src": "63de5c6caaee"
+  },
+  "features.folders.steps.4.narration": {
+    "text": "The Telegram messages go. On GitHub or S3 it's assets or objects instead.",
+    "src": "516b1097e90a"
+  },
+  "features.folders.steps.5.narration": {
+    "text": "Only then do the folder rows go, and the subfolders follow by cascade.",
+    "src": "3316bc8b6af9"
+  },
+  "features.missing-files.summary": {
+    "text": "Deleted something straight from Telegram? BYOS finds the leftovers.",
+    "src": "ee35f4f4ed01"
+  },
+  "features.missing-files.description": {
+    "text": "Your files live in your own storage, so you can delete them there behind BYOS's back. The Missing page lists those and when they vanished, and Scan now rechecks everything. Then you clean up the dead records.",
+    "src": "2d38994e5942"
+  },
+  "features.missing-files.underTheHood": {
+    "text": "Each provider has a cheap exists() check that downloads nothing. A scan runs it over every file and flags or un-flags them. Files also get flagged when someone opens one and the provider shrugs. If Telegram says slow down, the scan stops early.",
+    "src": "9e07e59c24cc"
+  },
+  "features.missing-files.steps.0.narration": {
+    "text": "You hit Scan now and get an honest progress bar that has no idea how long this takes.",
+    "src": "dbb72671507b"
+  },
+  "features.missing-files.steps.1.label": {
+    "text": "verify request",
+    "src": "7362daad45a2"
+  },
+  "features.missing-files.steps.1.narration": {
+    "text": "Every file with a current version gets checked.",
+    "src": "662e3121d892"
+  },
+  "features.missing-files.steps.2.label": {
+    "text": "asks: still there?",
+    "src": "677ab037c39a"
+  },
+  "features.missing-files.steps.2.narration": {
+    "text": "Each provider checks whether the object exists, without downloading it.",
+    "src": "97d700d18134"
+  },
+  "features.missing-files.steps.3.label": {
+    "text": "looks up messages",
+    "src": "2f7e473b4095"
+  },
+  "features.missing-files.steps.3.narration": {
+    "text": "A deleted message means a missing file. If Telegram says slow down, the scan stops early.",
+    "src": "b890fa54a8cc"
+  },
+  "features.missing-files.steps.4.label": {
+    "text": "flags missing files",
+    "src": "41dfb87cb2b3"
+  },
+  "features.missing-files.steps.4.narration": {
+    "text": "Missing files get flagged, and any that came back get un-flagged.",
+    "src": "1c76bf4f7ba0"
+  },
+  "features.missing-files.steps.5.label": {
+    "text": "the missing list",
+    "src": "9ab53f228549"
+  },
+  "features.missing-files.steps.5.narration": {
+    "text": "Each row says when it went missing, with buttons to remove the records.",
+    "src": "3188e2cf5650"
+  },
+  "features.search-operators.summary": {
+    "text": "Type type:pdf size:>2mb, or just 'pdfs from last week'.",
+    "src": "d4ae743cc65b"
+  },
+  "features.search-operators.description": {
+    "text": "Filters for type, size, tags, folder, dates and starred files, plus quoted phrases and -exclude. Or type like a human: 'pdfs from last week larger than 2mb'. Whatever's left over is fuzzy-matched against file names. Tags only match through tag:.",
+    "src": "7d3fe49ff6a0"
+  },
+  "features.search-operators.underTheHood": {
+    "text": "One regex tokenises the query and pulls out the operators and plain-English bits. What's left goes to Postgres: a full-text search vector, plus a trigram index so half-typed words still match. Results are ranked and capped at 50 (the API would allow 100).",
+    "src": "bd7055d21918"
+  },
+  "features.search-operators.steps.0.narration": {
+    "text": "Something like 'pdfs from last week >2mb invoice'.",
+    "src": "f5210272331f"
+  },
+  "features.search-operators.steps.1.label": {
+    "text": "search request",
+    "src": "61654063b293"
+  },
+  "features.search-operators.steps.1.narration": {
+    "text": "API keys can search too, if they have read access to files.",
+    "src": "34afb85f2f3b"
+  },
+  "features.search-operators.steps.2.label": {
+    "text": "parses the query",
+    "src": "19c0ca96b2f6"
+  },
+  "features.search-operators.steps.2.narration": {
+    "text": "That becomes a PDF filter, a date range, a minimum size, and the word 'invoice'.",
+    "src": "c621f45dd61c"
+  },
+  "features.search-operators.steps.3.label": {
+    "text": "full-text + trigram",
+    "src": "71d9230c8648"
+  },
+  "features.search-operators.steps.3.narration": {
+    "text": "Filters run in SQL, then results are ranked by how well they match.",
+    "src": "0296067056d9"
+  },
+  "features.permanent-links.summary": {
+    "text": "Share /you/resume once, then keep replacing the file behind it.",
+    "src": "395224134733"
+  },
+  "features.permanent-links.description": {
+    "text": "Give a file a short link like /you/resume. Replace or restore the file later and the same link serves the new version. You can rename the slug or stop sharing anytime. One permanent link per file or folder.",
+    "src": "fe58f2ad7086"
+  },
+  "features.permanent-links.underTheHood": {
+    "text": "The public /{username}/{slug} route is registered last, so its catch-all doesn't swallow real API paths. It goes from link to file to current version and streams it. The content hash is the ETag, so a replaced file shows up fresh at the same URL.",
+    "src": "46914cf38001"
+  },
+  "features.permanent-links.steps.0.narration": {
+    "text": "You pick a slug, or take the one suggested from the file name.",
+    "src": "7ba8fa7344a0"
+  },
+  "features.permanent-links.steps.1.label": {
+    "text": "slug + file",
+    "src": "56b1ba85b082"
+  },
+  "features.permanent-links.steps.1.narration": {
+    "text": "Slug rules are checked, and a file that already has a link gets a 409.",
+    "src": "e08444b9ef6e"
+  },
+  "features.permanent-links.steps.2.label": {
+    "text": "saves the link",
+    "src": "c0a216668fe6"
+  },
+  "features.permanent-links.steps.2.narration": {
+    "text": "Slugs are unique per owner, so you can't double-book /you/resume.",
+    "src": "1c0e4e47ad7e"
+  },
+  "features.permanent-links.steps.3.label": {
+    "text": "opens the link",
+    "src": "4a690b311935"
+  },
+  "features.permanent-links.steps.3.narration": {
+    "text": "No login needed. There's a per-IP rate limit, though.",
+    "src": "d091413f658f"
+  },
+  "features.permanent-links.steps.4.label": {
+    "text": "streams latest version",
+    "src": "ccfaa9c641c5"
+  },
+  "features.permanent-links.steps.4.narration": {
+    "text": "The current version streams from your storage, with its hash as the ETag.",
+    "src": "5c7e6955f7fb"
+  },
+  "features.shared-folders.summary": {
+    "text": "Share a whole folder as a page anyone can browse.",
+    "src": "64372fd0b222"
+  },
+  "features.shared-folders.description": {
+    "text": "Share a folder and you get a public page with its subfolders and files. Visitors can open or download anything inside, and nothing outside. A link that doesn't exist gets a 404 instead of a suspiciously empty folder.",
+    "src": "c1ab14c256ab"
+  },
+  "features.shared-folders.underTheHood": {
+    "text": "The API redirects folder links to a page in the web app. Every public route works out which folders sit inside the shared one and refuses anything else. If the owner's GitHub or S3 keys broke, visitors see a plain 503; a logged-out Telegram still leaks the owner's 'sign in again' 409.",
+    "src": "12d6c2a6eb25"
+  },
+  "features.shared-folders.steps.0.narration": {
+    "text": "You share a folder, which creates a link pointing at it.",
+    "src": "08443a464c3e"
+  },
+  "features.shared-folders.steps.1.label": {
+    "text": "creates folder link",
+    "src": "56b1ba85b082"
+  },
+  "features.shared-folders.steps.1.narration": {
+    "text": "One link per folder. Asking for a second one gets a 409.",
+    "src": "6ebb5856f1b8"
+  },
+  "features.shared-folders.steps.2.label": {
+    "text": "opens the link",
+    "src": "4a690b311935"
+  },
+  "features.shared-folders.steps.2.narration": {
+    "text": "Folder links point at the web app's public page. Open the API version of the link instead and it 302s you there.",
+    "src": "2dbc9d70399b"
+  },
+  "features.shared-folders.steps.3.narration": {
+    "text": "The public page loads whatever the link points at.",
+    "src": "9ef66b72e4bc"
+  },
+  "features.shared-folders.steps.4.label": {
+    "text": "lists one level",
+    "src": "e5785e7aa9df"
+  },
+  "features.shared-folders.steps.4.narration": {
+    "text": "Contents load one level at a time, and only from inside the shared folder.",
+    "src": "77c7528bdbf6"
+  },
+  "features.shared-folders.steps.5.narration": {
+    "text": "Before streaming, it checks the file really lives inside the shared folder.",
+    "src": "f150023d75fe"
+  },
+  "features.drive-indexing.summary": {
+    "text": "Make your files searchable by meaning, using your own embedding model.",
+    "src": "e78590f22dd2"
+  },
+  "features.drive-indexing.description": {
+    "text": "Indexing shows how much of your drive Bao can search and indexes the rest in one click, or just the files you pick. A floating card tracks progress and skipped files, and keeps going while you browse.",
+    "src": "076b11c12cfc"
+  },
+  "features.drive-indexing.underTheHood": {
+    "text": "Files already embedded at their current version are skipped. The rest get downloaded, turned into text, cut into 1,800-character chunks and embedded 64 at a time, ready for pgvector to search. Rate limits get a few retries; a bad API key stops the run.",
+    "src": "b47e39b3084a"
+  },
+  "features.drive-indexing.steps.0.narration": {
+    "text": "You see how much is covered and pick what to index.",
+    "src": "b161ee5a5711"
+  },
+  "features.drive-indexing.steps.1.label": {
+    "text": "starts indexing",
+    "src": "6f11c471c27a"
+  },
+  "features.drive-indexing.steps.1.narration": {
+    "text": "Needs a real login and a key with an embedding model. Progress streams back as plain text.",
+    "src": "535d59734699"
+  },
+  "features.drive-indexing.steps.2.narration": {
+    "text": "Each file is fetched from wherever you stored it.",
+    "src": "b5938c5816d7"
+  },
+  "features.drive-indexing.steps.3.label": {
+    "text": "sends chunks",
+    "src": "43e1f5af1d21"
+  },
+  "features.drive-indexing.steps.3.narration": {
+    "text": "Chunks go out in batches of 64 to be embedded.",
+    "src": "b1af9a220427"
+  },
+  "features.drive-indexing.steps.4.label": {
+    "text": "embedding request",
+    "src": "532e540287b6"
+  },
+  "features.drive-indexing.steps.4.narration": {
+    "text": "Your provider returns one vector per chunk. If it says slow down, BYOS waits as told.",
+    "src": "e92b329d493e"
+  },
+  "features.drive-indexing.steps.5.narration": {
+    "text": "Old chunks for that file are deleted, then the new ones go in.",
+    "src": "c4478883db42"
+  },
+  "features.drive-indexing.steps.6.narration": {
+    "text": "The floating card updates and the file gets marked as indexed.",
+    "src": "ecf35a07d181"
+  },
+  "features.vision-ocr.summary": {
+    "text": "Scanned PDFs and photos get read by your vision model.",
+    "src": "409f31951532"
+  },
+  "features.vision-ocr.description": {
+    "text": "A scanned PDF is just pictures of text, so normal extraction finds nothing. BYOS sends only those pages to your own multimodal model to read. Normal PDFs cost nothing extra. Photos get the same treatment.",
+    "src": "d22485cb78be"
+  },
+  "features.vision-ocr.underTheHood": {
+    "text": "Pages with under 80 characters of text count as scans. Only those get rendered to images and sent to your model, capped at 20 pages per file. If the model refuses the first one, BYOS stops instead of paying to be refused on every page.",
+    "src": "d1c74b499b8e"
+  },
+  "features.vision-ocr.steps.0.narration": {
+    "text": "You index a folder that has scanned PDFs or photos in it.",
+    "src": "3b8bb4e3164e"
+  },
+  "features.vision-ocr.steps.1.label": {
+    "text": "starts indexing",
+    "src": "6f11c471c27a"
+  },
+  "features.vision-ocr.steps.1.narration": {
+    "text": "Scans get picked up like any other file.",
+    "src": "6d626e112cba"
+  },
+  "features.vision-ocr.steps.2.narration": {
+    "text": "The PDF bytes come down from your storage.",
+    "src": "a0b4f3a9992f"
+  },
+  "features.vision-ocr.steps.3.narration": {
+    "text": "Nearly blank pages are rendered to images and sent to your model.",
+    "src": "4157e099cbd3"
+  },
+  "features.vision-ocr.steps.4.narration": {
+    "text": "The model reads each page back as text. One refusal and BYOS stops asking for that file.",
+    "src": "612ab6615a8b"
+  },
+  "features.vision-ocr.steps.5.narration": {
+    "text": "The transcribed text gets chunked and embedded like everything else.",
+    "src": "50fef71c3695"
+  },
+  "features.ask-bao.summary": {
+    "text": "Ask a question, and Bao digs the answer out of your files.",
+    "src": "42a194627484"
+  },
+  "features.ask-bao.description": {
+    "text": "Ask something like 'What was my net pay in June 2026?'. Bao searches your indexed files, reads the promising ones and answers with sources underneath. You can watch it work, or hit Stop if it's taking the scenic route.",
+    "src": "9208f0b091ce"
+  },
+  "features.ask-bao.underTheHood": {
+    "text": "Bao is a tool-calling loop of up to 10 steps against any OpenAI-compatible model. No separate vector database: Postgres ranks the chunks itself with pgvector. The progress rows stream live, but each model reply arrives whole, so the typewriter effect is pure theatre.",
+    "src": "b9e8117b070f"
+  },
+  "features.ask-bao.steps.0.narration": {
+    "text": "Your first message also quietly creates the conversation.",
+    "src": "6a1d9dfa2afc"
+  },
+  "features.ask-bao.steps.1.label": {
+    "text": "question + settings",
+    "src": "1df1ea24cc62"
+  },
+  "features.ask-bao.steps.1.narration": {
+    "text": "The server loads the chat history, decrypts your LLM key and starts the agent.",
+    "src": "2a4f657e8e25"
+  },
+  "features.ask-bao.steps.2.label": {
+    "text": "asks the model",
+    "src": "92e694e3d577"
+  },
+  "features.ask-bao.steps.2.narration": {
+    "text": "The model reads your question and decides to search. Each round shows up as a progress row.",
+    "src": "7c2895513587"
+  },
+  "features.ask-bao.steps.3.label": {
+    "text": "searches contents",
+    "src": "848cbaf03af1"
+  },
+  "features.ask-bao.steps.3.narration": {
+    "text": "The query gets embedded, and the best 8 excerpts come back by default.",
+    "src": "6377fc246bf0"
+  },
+  "features.ask-bao.steps.4.narration": {
+    "text": "Postgres ranks your chunks with pgvector and hands back the best 40, not every vector. Bao keeps 8 of them and marks those files as recently used.",
+    "src": "7214aafade00"
+  },
+  "features.ask-bao.steps.5.narration": {
+    "text": "The answer and its sources are saved, so they're still there after a reload.",
+    "src": "0be572a1bf6e"
+  },
+  "features.ask-bao.steps.6.label": {
+    "text": "types out answer",
+    "src": "255ce4c61938"
+  },
+  "features.ask-bao.steps.6.narration": {
+    "text": "The finished answer gets typed out frame by frame. Stop cancels the turn.",
+    "src": "7819d80cefc4"
+  },
+  "features.rag-addons.summary": {
+    "text": "Four optional tricks for better search, each costing at least one extra model call.",
+    "src": "4d91a1129be3"
+  },
+  "features.rag-addons.description": {
+    "text": "In the + menu: rewrite the question, search with a draft answer (HyDE), rerank results, and retry weak searches. Each one costs at least one extra model call. They're all off until you turn them on.",
+    "src": "d64723dd153c"
+  },
+  "features.rag-addons.underTheHood": {
+    "text": "They run in order. Rewrite turns the question into keywords, HyDE drafts a fake answer and searches with that, rerank asks the model to sort, and the retry grades the top 4 and searches again on a NO. If one fails, search carries on without it.",
+    "src": "2005e73c18e9"
+  },
+  "features.rag-addons.steps.0.narration": {
+    "text": "You flip the switches in the + menu. Defaults come from Settings.",
+    "src": "337babc5edb1"
+  },
+  "features.rag-addons.steps.1.label": {
+    "text": "add-ons in request",
+    "src": "217f6c027d47"
+  },
+  "features.rag-addons.steps.1.narration": {
+    "text": "The chosen add-ons travel along with the message.",
+    "src": "0869faab1139"
+  },
+  "features.rag-addons.steps.2.label": {
+    "text": "retrieve with add-ons",
+    "src": "836d57982d1a"
+  },
+  "features.rag-addons.steps.2.narration": {
+    "text": "Search gets the flags. It's the same pipeline the standalone RAG chat uses.",
+    "src": "2d114f317f4b"
+  },
+  "features.rag-addons.steps.3.narration": {
+    "text": "Small, low-temperature calls tidy up the question before it gets embedded.",
+    "src": "398e1c52d9f4"
+  },
+  "features.rag-addons.steps.4.narration": {
+    "text": "The rewritten question, or the draft answer, gets embedded, and pgvector ranks your chunks right inside Postgres.",
+    "src": "7d1020d17882"
+  },
+  "features.rag-addons.steps.5.narration": {
+    "text": "The model reorders the hits and grades the top 4. A NO means one more search.",
+    "src": "2a0c8698087f"
+  },
+  "features.rag-addons.steps.6.narration": {
+    "text": "The best chunk from each file comes first, so one chatty document can't hog the results.",
+    "src": "f4034de9d41f"
+  },
+  "features.verified-citations.summary": {
+    "text": "Every quote under an answer is checked against what Bao actually read.",
+    "src": "a90d7333bd3f"
+  },
+  "features.verified-citations.description": {
+    "text": "Source chips list only the files the answer leaned on, with up to 3 quotes each. Cite a file it never read? That source gets dropped. Paraphrase instead of quoting? The file stays, the made-up quote doesn't. Sources survive reloads, even after the file is deleted.",
+    "src": "fd2150c98a2e"
+  },
+  "features.verified-citations.underTheHood": {
+    "text": "The model is told to end with hidden [source: id | exact words] lines. BYOS strips them out and keeps a quote only if it really appears in what Bao read from that file, ignoring case and spacing. No citations at all? It matches the answer's numbers against the files instead.",
+    "src": "642188a9e7c4"
+  },
+  "features.verified-citations.steps.0.narration": {
+    "text": "Something with a real answer sitting in a file, like a payslip total.",
+    "src": "9c40b7cbc372"
+  },
+  "features.verified-citations.steps.1.narration": {
+    "text": "The model is told to end with source lines quoting exact words. You never see these.",
+    "src": "7c136e434919"
+  },
+  "features.verified-citations.steps.2.label": {
+    "text": "checks the quotes",
+    "src": "a6d89798da89"
+  },
+  "features.verified-citations.steps.2.narration": {
+    "text": "Every quote is checked against the text Bao actually read. Made-up quotes get binned.",
+    "src": "cb20fa2526c2"
+  },
+  "features.verified-citations.steps.3.narration": {
+    "text": "The checked sources are stored inside the message itself.",
+    "src": "4bbbdcc7f289"
+  },
+  "features.verified-citations.steps.4.narration": {
+    "text": "The sources stream in right after the answer.",
+    "src": "ab959514e9cd"
+  },
+  "features.verified-citations.steps.5.narration": {
+    "text": "A Sources row appears, and each chip opens the file beside the chat.",
+    "src": "4746ebe2d23e"
+  },
+  "features.source-highlighting.summary": {
+    "text": "Click a source and the PDF opens with the quote highlighted.",
+    "src": "1875c297b0df"
+  },
+  "features.source-highlighting.description": {
+    "text": "Clicking a source opens the file beside the answer. PDFs scroll straight to the quoted bit with a coloured box around it, and text files get it highlighted. If the file was deleted since, you still see what was quoted.",
+    "src": "392cbb592d60"
+  },
+  "features.source-highlighting.underTheHood": {
+    "text": "The browser's own PDF viewer can't be told to highlight anything, so BYOS renders PDFs itself with pdf.js. It finds the quote in each page's text layer, ignoring case and spacing, because PDFs break words in creative ways. Then it draws boxes on top.",
+    "src": "a6bfeae0927f"
+  },
+  "features.source-highlighting.steps.0.narration": {
+    "text": "The chat squeezes over and the file opens on the right.",
+    "src": "ed40e0f609cf"
+  },
+  "features.source-highlighting.steps.1.label": {
+    "text": "fetches file info",
+    "src": "0d9aa4ac98cb"
+  },
+  "features.source-highlighting.steps.1.narration": {
+    "text": "A 404 means the file was deleted, so the saved quotes are shown instead.",
+    "src": "bc3f3f160b1b"
+  },
+  "features.source-highlighting.steps.2.label": {
+    "text": "downloads the file",
+    "src": "927b172970fb"
+  },
+  "features.source-highlighting.steps.2.narration": {
+    "text": "The current version streams from your storage through the API.",
+    "src": "c2c113f3a759"
+  },
+  "features.source-highlighting.steps.3.label": {
+    "text": "renders with pdf.js",
+    "src": "d3de411558d3"
+  },
+  "features.source-highlighting.steps.3.narration": {
+    "text": "Each page is drawn to a canvas, and its text layer gives away where every word sits.",
+    "src": "78d3421719b2"
+  },
+  "features.source-highlighting.steps.4.narration": {
+    "text": "Tinted boxes land on the matched words, and the first one scrolls into view.",
+    "src": "95fb08d56a00"
+  },
+  "features.permission-modes.summary": {
+    "text": "Four levels of trust, from Bookish Bao to Boss Bao.",
+    "src": "263585a2d473"
+  },
+  "features.permission-modes.description": {
+    "text": "Read only (Bookish Bao) never changes anything. Ask first (Butler Bao) queues every change for you. Auto-organize (Busy Bao) does reversible stuff but waits on deletes and public links. Full access (Boss Bao) just does it.",
+    "src": "74a5dbfd62e0"
+  },
+  "features.permission-modes.underTheHood": {
+    "text": "One small function decides whether a write runs now: Full always, Auto only when it isn't dangerous, the others never. Deletes and share links count as dangerous. Read-only turns aren't even offered the write tools, so there's nothing to misuse.",
+    "src": "ceba9ec8faae"
+  },
+  "features.permission-modes.steps.0.narration": {
+    "text": "You tap the avatar and pick which Bao you're dealing with today.",
+    "src": "dbbe9e7d3341"
+  },
+  "features.permission-modes.steps.1.label": {
+    "text": "remembers the mode",
+    "src": "4be548a0cb82"
+  },
+  "features.permission-modes.steps.1.narration": {
+    "text": "Your choice is saved on this device, unless Settings pins a starting mode.",
+    "src": "451c7fe1e634"
+  },
+  "features.permission-modes.steps.2.narration": {
+    "text": "The mode rides along with every chat message.",
+    "src": "537e37da5a3b"
+  },
+  "features.permission-modes.steps.3.narration": {
+    "text": "Read only gets read tools only. Other modes get write tools too, and every mode gets a short brief.",
+    "src": "250930e3f7d6"
+  },
+  "features.permission-modes.steps.4.narration": {
+    "text": "Each write either runs now or waits in the plan, depending on the mode.",
+    "src": "bb8741f04c69"
+  },
+  "features.reviewable-plans.summary": {
+    "text": "Bao drafts the changes. You press Apply, or you don't.",
+    "src": "2d00a9924273"
+  },
+  "features.reviewable-plans.description": {
+    "text": "When Bao wants to change your drive, the reply ends in a plan card like '14 changes to confirm'. Permanent or public changes get a red warning. Apply runs the lot, and anything that fails shows why.",
+    "src": "56cb89bd7bb3"
+  },
+  "features.reviewable-plans.underTheHood": {
+    "text": "In Ask mode, write tools don't run. Bao records them and tells the model they're done, so it can chain 'make Finance, then move 12 files into it'. Apply loads the stored plan, never the browser's copy, and a double click can't run it twice.",
+    "src": "210c2188b410"
+  },
+  "features.reviewable-plans.steps.0.narration": {
+    "text": "In Ask first mode: 'Move all my tax documents into one folder.'",
+    "src": "8de1274dab2a"
+  },
+  "features.reviewable-plans.steps.1.label": {
+    "text": "writes get queued",
+    "src": "26acad6b25db"
+  },
+  "features.reviewable-plans.steps.1.narration": {
+    "text": "Each write is noted down and the model is told it worked. A small, useful lie.",
+    "src": "41314d3d4b14"
+  },
+  "features.reviewable-plans.steps.2.label": {
+    "text": "saves the plan",
+    "src": "544d7e66341c"
+  },
+  "features.reviewable-plans.steps.2.narration": {
+    "text": "The plan is stored on the server, every action in order, waiting for you.",
+    "src": "0b1826e9ef32"
+  },
+  "features.reviewable-plans.steps.3.label": {
+    "text": "plan card",
+    "src": "78df4fbf8c2d"
+  },
+  "features.reviewable-plans.steps.3.narration": {
+    "text": "The plan streams in and shows up as a card.",
+    "src": "2b61458f5ae7"
+  },
+  "features.reviewable-plans.steps.4.narration": {
+    "text": "Bao drafts the plan and touches nothing. You're the one holding the Apply button.",
+    "src": "b1aa39d64713"
+  },
+  "features.reviewable-plans.steps.5.label": {
+    "text": "apply request",
+    "src": "c9215b7b1e98"
+  },
+  "features.reviewable-plans.steps.5.narration": {
+    "text": "Only a pending plan can run. New folders get made first, parents before children.",
+    "src": "5c0c36e5aff0"
+  },
+  "features.reviewable-plans.steps.6.narration": {
+    "text": "Each change goes through the same code as the regular API, ownership checks and all.",
+    "src": "f91277c817c0"
+  },
+  "features.revise-plan.summary": {
+    "text": "Not quite right? Tell Bao, and the plan gets rewritten.",
+    "src": "4ac5b8ebf9b3"
+  },
+  "features.revise-plan.description": {
+    "text": "Under a pending plan, 'Want it different?' lets you type something like 'keep the tax files in their own folder'. The same message gets a new plan. If that fails, the old plan stays, still ready to apply.",
+    "src": "2928c11852e5"
+  },
+  "features.revise-plan.underTheHood": {
+    "text": "The old plan goes back to the model along with a remove_change tool for dropping items. Dropping a folder also drops everything headed into it. The new plan is saved before the old one is retired, so a failed revision costs nothing.",
+    "src": "02f4cfc337df"
+  },
+  "features.revise-plan.steps.0.narration": {
+    "text": "You say what's wrong. The card dims while an animated Bao walks along the rows.",
+    "src": "1df27d5feb61"
+  },
+  "features.revise-plan.steps.1.label": {
+    "text": "note + old plan",
+    "src": "47fb0cb88f88"
+  },
+  "features.revise-plan.steps.1.narration": {
+    "text": "The server loads the old plan, checks it's yours, and hands it to the new run.",
+    "src": "5a3480575f70"
+  },
+  "features.revise-plan.steps.2.narration": {
+    "text": "The model keeps, adds or removes numbered changes.",
+    "src": "6d0638c8c925"
+  },
+  "features.revise-plan.steps.3.narration": {
+    "text": "The new plan is saved first. Only then is the old one retired.",
+    "src": "a174d7d8e614"
+  },
+  "features.revise-plan.steps.4.label": {
+    "text": "revised plan",
+    "src": "ae9589b8da17"
+  },
+  "features.revise-plan.steps.4.narration": {
+    "text": "The message swaps in one go, right after a small 'Done!' confetti moment.",
+    "src": "90462643f907"
+  },
+  "features.organize.summary": {
+    "text": "One command to tidy the whole drive, or just ask nicely.",
+    "src": "af31a54c9df7"
+  },
+  "features.organize.description": {
+    "text": "Type /organize to pick a grouping and how deep folders go, plus whether to rename or tag. Or just say 'clean up my receipts'. Defaults are cautious: your names and folders stay as they are.",
+    "src": "96a03ae46a5c"
+  },
+  "features.organize.underTheHood": {
+    "text": "BYOS spots tidy-up requests by matching a verb like 'declutter' with a thing like 'downloads'. The run gets an inventory of up to 600 files and 30 steps. Delete and share tools are never offered, so a cleanup can't turn into a purge.",
+    "src": "ff42d4759a5b"
+  },
+  "features.organize.steps.0.narration": {
+    "text": "A settings panel opens with cautious defaults. Enter starts it.",
+    "src": "4f444e039ac5"
+  },
+  "features.organize.steps.1.label": {
+    "text": "request + options",
+    "src": "c752f07191b0"
+  },
+  "features.organize.steps.1.narration": {
+    "text": "The message goes out with your chosen options attached.",
+    "src": "4eada32b23e6"
+  },
+  "features.organize.steps.2.label": {
+    "text": "lists your files",
+    "src": "ec99b813fa06"
+  },
+  "features.organize.steps.2.narration": {
+    "text": "Up to 600 files, with their paths, go into Bao's brief.",
+    "src": "9b77f3ce1299"
+  },
+  "features.organize.steps.3.label": {
+    "text": "plans the moves",
+    "src": "a0e973f38a1c"
+  },
+  "features.organize.steps.3.narration": {
+    "text": "Bao can read inside files, so scan_0032.pdf still ends up in the right folder.",
+    "src": "55dfa48d7ff9"
+  },
+  "features.organize.steps.4.narration": {
+    "text": "The plan comes back with a tree of what the drive will look like after.",
+    "src": "c0a0b3282930"
+  },
+  "features.model-check.summary": {
+    "text": "BYOS learns what each model accepts, so weird providers still work.",
+    "src": "b88e0a26e400"
+  },
+  "features.model-check.description": {
+    "text": "Pick a model and BYOS runs a quick check, greying out settings it refuses and listing the reasoning levels it supports. Results are cached in your browser. If a provider still rejects something mid-chat, BYOS fixes the request and retries.",
+    "src": "b87d2584f9cc"
+  },
+  "features.model-check.underTheHood": {
+    "text": "The check sends one tiny 'ping' and notes every parameter the provider rejects. OpenRouter never complains, so there BYOS reads its model list instead. Mid-chat, a 400 gets read, the bad parameter is dropped or renamed, and the fix is remembered per model. Supported reasoning levels are scraped straight from the error message.",
+    "src": "62b171199b30"
+  },
+  "features.model-check.steps.0.narration": {
+    "text": "The form checks the browser cache first. On a miss it waits 600 ms, then asks the server.",
+    "src": "fa473edfd888"
+  },
+  "features.model-check.steps.1.label": {
+    "text": "check request",
+    "src": "fe00fdcbda66"
+  },
+  "features.model-check.steps.1.narration": {
+    "text": "BYOS sends one tiny probe request to the model.",
+    "src": "4512c320c419"
+  },
+  "features.model-check.steps.2.narration": {
+    "text": "If the provider complains about a parameter, the probe tries again without it.",
+    "src": "154330248f29"
+  },
+  "features.model-check.steps.3.label": {
+    "text": "what works",
+    "src": "5b7d50f09ff4"
+  },
+  "features.model-check.steps.3.narration": {
+    "text": "Refused fields go grey and only real effort levels are offered.",
+    "src": "835956b828e8"
+  },
+  "features.model-check.steps.4.narration": {
+    "text": "Saved per endpoint and model, so next time costs zero requests.",
+    "src": "41c869b7cfbd"
+  },
+  "features.api-keys.summary": {
+    "text": "Keys for your scripts, with exactly the access you give them.",
+    "src": "d6dab1d29270"
+  },
+  "features.api-keys.description": {
+    "text": "Give each key its own access level per resource and an expiry, or none at all. The full key shows exactly once, so copy it. You get 10 active keys, and revoking one takes effect immediately.",
+    "src": "99a19dcf4ec3"
+  },
+  "features.api-keys.underTheHood": {
+    "text": "Only a SHA-256 of the key is stored, and a public prefix makes the lookup one query. GET is read, everything else is write. Keys are blocked from account-admin routes, so a leaked key can't mint more keys or read your storage credentials.",
+    "src": "29856db5fb09"
+  },
+  "features.api-keys.steps.0.narration": {
+    "text": "You pick access per resource and an expiry.",
+    "src": "63099e78f004"
+  },
+  "features.api-keys.steps.1.label": {
+    "text": "new key request",
+    "src": "86bfc1fa9eb0"
+  },
+  "features.api-keys.steps.1.narration": {
+    "text": "Only a logged-in session can make keys. The 10-key limit is checked here.",
+    "src": "43bf15d2ddc9"
+  },
+  "features.api-keys.steps.2.label": {
+    "text": "stores the hash",
+    "src": "1baaf8b67929"
+  },
+  "features.api-keys.steps.2.narration": {
+    "text": "You see the full key once. BYOS keeps only its hash, so don't lose it.",
+    "src": "18aae164b501"
+  },
+  "features.api-keys.steps.3.label": {
+    "text": "Bearer key",
+    "src": "b0348915bde8"
+  },
+  "features.api-keys.steps.3.narration": {
+    "text": "Your script calls something like GET /files.",
+    "src": "f85d2b52e22e"
+  },
+  "features.api-keys.steps.4.label": {
+    "text": "checks prefix + scope",
+    "src": "d920b5fcca34"
+  },
+  "features.api-keys.steps.4.narration": {
+    "text": "The hash is compared, then expiry and scope get checked.",
+    "src": "79eee2c6e289"
+  },
+  "features.api-keys.steps.5.label": {
+    "text": "per-key rate limit",
+    "src": "fd7dd119302a"
+  },
+  "features.api-keys.steps.5.narration": {
+    "text": "Each key gets its own counter. If Redis is down, the request goes through anyway.",
+    "src": "922b7c38ec64"
+  },
+  "features.webhooks.summary": {
+    "text": "Get a signed HTTP call whenever a file changes.",
+    "src": "19ef24cfd62c"
+  },
+  "features.webhooks.description": {
+    "text": "Add an endpoint URL and choose which file events you care about; none means all of them. Each webhook gets a signing secret, and a sample request shows what will arrive. Up to 5 per account.",
+    "src": "98e7a0f84b07"
+  },
+  "features.webhooks.underTheHood": {
+    "text": "URLs pointing at private or internal addresses are rejected up front. Deliveries fire in the background, signed with HMAC-SHA256. Redirects are off, so a sneaky URL can't bounce the request somewhere internal. Nothing is retried, so your endpoint had better be awake.",
+    "src": "c7299c13d151"
+  },
+  "features.webhooks.steps.0.label": {
+    "text": "adds an endpoint",
+    "src": "7d81ce1a6ee4"
+  },
+  "features.webhooks.steps.0.narration": {
+    "text": "You paste a URL and pick your events.",
+    "src": "c6ded2fd4913"
+  },
+  "features.webhooks.steps.1.label": {
+    "text": "registers the webhook",
+    "src": "ae8728113ce0"
+  },
+  "features.webhooks.steps.1.narration": {
+    "text": "The host is looked up and internal IPs get turned away. You get the secret back.",
+    "src": "6e76cbf27a43"
+  },
+  "features.webhooks.steps.2.label": {
+    "text": "file event",
+    "src": "73a34c3398b3"
+  },
+  "features.webhooks.steps.2.narration": {
+    "text": "An upload commits and the event fires. The upload doesn't wait for it.",
+    "src": "ad3c4a4c6e93"
+  },
+  "features.webhooks.steps.3.label": {
+    "text": "loads webhooks",
+    "src": "e06b37e369b6"
+  },
+  "features.webhooks.steps.3.narration": {
+    "text": "It finds the owner's active webhooks, on its own database session.",
+    "src": "0137c75512ac"
+  },
+  "features.webhooks.steps.4.narration": {
+    "text": "Signed, 5 second timeout, no redirects, no second chances.",
+    "src": "e44245543ed4"
+  },
+  "features.telegram-sign-up.stepNotes.2": {
+    "text": "start_signup checks the username is free (a read, nothing written), Argon2-hashes the password and asks Telegram for a code. The ticket is then Fernet-encrypted with {phone, phone_code_hash, session, username, password_hash, awaiting:'code'}. Fernet stamps the time, so decrypt_ttl(ticket, 600) rejects it after 10 minutes.",
+    "src": "3dc28ad2eb0e"
+  },
+  "features.telegram-sign-up.stepNotes.7": {
+    "text": "Access: HS256 JWT {sub, type:'access', iat, exp, jti}, 15 min, kept in memory. Refresh: token_urlsafe(48), 30 days. The raw token rides in an httpOnly cookie; the database keeps only its SHA-256. Each refresh revokes the old row; a reused revoked token gets 401.",
+    "src": "e8c834d4c05d"
+  },
+  "features.github-storage.nodeNotes.github": {
+    "text": "Holds the repo (private by default) with daily prereleases of assets, and reports the token's expiry in a response header that BYOS records.",
+    "src": "1e264e250983"
+  },
+  "features.versions.nodeNotes.postgres": {
+    "text": "file_versions (immutable, unique version_no) plus files.current_version_id. Restoring repoints that and copies the version's size and hash onto the file row.",
+    "src": "c126d9bc74cb"
+  },
+  "features.folders.deep.why": {
+    "text": "An adjacency list makes moves O(1) row updates. Breadcrumbs and the cycle check are single recursive CTEs; subtree sweeps load the owner's folders once and walk them in memory.",
+    "src": "d24fd3ec232f"
+  },
+  "features.folders.stepNotes.3": {
+    "text": "Collecting the subtree to delete: load the owner's (id, parent_id) pairs once and walk them in Python with a stack. The recursive SQL lives elsewhere: breadcrumbs walk up with a depth column, and move_folder's cycle check rejects moving A into A/B.",
+    "src": "326e3a5dc7ed"
+  },
+  "features.folders.nodeNotes.postgres": {
+    "text": "Adjacency list (parent_id, ON DELETE CASCADE). Recursive CTEs handle breadcrumbs and the move cycle check; deleting the root folder cascades to its subfolders.",
+    "src": "6e00fe1e3b0e"
+  },
+  "features.permanent-links.deep.cost": {
+    "text": "About five indexed lookups per hit (user, alias, file, version, storage account), and a 304 pays for them too.",
+    "src": "721baf94562b"
+  },
+  "features.permanent-links.nodeNotes.storage-layer": {
+    "text": "Streams the current version's object. A missing object triggers on_missing, and broken GitHub or S3 credentials become a neutral 503. A dead Telegram session still comes back as its re-login 409.",
+    "src": "70ac92362d65"
+  },
+  "features.ask-bao.deep.how.1": {
+    "text": "search_content embeds the query. Postgres ranks chunks by pgvector cosine distance and returns the top 40, and _diversify cuts that to k (8 by default), one chunk per file first.",
+    "src": "9bc3829de712"
+  },
+  "features.ask-bao.stepNotes.5": {
+    "text": "The query is embedded once. Postgres orders the user's chunks for that model by embedding::vector <=> CAST(:q AS real[])::vector and returns the top 40, using the (user_id, embed_model) index. _diversify then keeps 8, each file's best chunk first. Exact cosine distance via pgvector; only those 40 rows leave the database.",
+    "src": "b8537dcb0cac"
+  },
+  "features.ask-bao.stepNotes.6": {
+    "text": "Control records are framed as \\x1e{json}\\n. Progress streams first, while Bao works: '\\x1e{\"kind\":\"step\",\"label\":\"Searched file contents\"}\\n'. Then the answer arrives in one piece, then the sources: '… The total is ₹00,000.\\x1e{\"kind\":\"sources\",\"sources\":[…]}\\n'. \\x1e never appears in model output.",
+    "src": "7b15dbd7a838"
+  },
+  "features.ask-bao.nodeNotes.postgres": {
+    "text": "Ranks ai_file_chunks by pgvector cosine distance and returns the top 40 candidates. Also stores the conversation's messages, sources event included.",
+    "src": "d47658f9ab45"
+  },
+  "features.rag-addons.deep.cost": {
+    "text": "Up to 6 extra small calls per search (512 tokens, temperature 0.1) when every add-on is on and the retry kicks in.",
+    "src": "e59996b50e78"
+  },
+  "features.reviewable-plans.stepNotes.6": {
+    "text": "apply_plan loads the stored row, never client-sent actions, and returns 409 once the plan isn't pending; the Apply button also locks while it runs, which is what really stops a double click. Actions already done in Auto mode keep their outcome; only the null holes run.",
+    "src": "3f56b73c1238"
+  },
+  "features.organize.deep.how.3": {
+    "text": "Every organizing run gets MAX_STEPS = 30, including plain requests like 'clean up my receipts'. Normal turns get 10.",
+    "src": "9f05ceaf4516"
+  },
+  "nodes.user.summary": {
+    "text": "You, running your drive and chatting with Bao.",
+    "src": "2b860a293385"
+  },
+  "nodes.user.details": {
+    "text": "Owns the storage accounts and the LLM key. Signs in with a Telegram code or a password, then does everything through the web app.",
+    "src": "370012c6e3ea"
+  },
+  "nodes.visitor.summary": {
+    "text": "Anyone with a link and no account.",
+    "src": "2f009f69e625"
+  },
+  "nodes.visitor.details": {
+    "text": "Opens permanent links, shared folders or expiring shares without logging in. Files stream straight to the browser; folder links redirect to a page. Every public route is rate-limited per IP.",
+    "src": "72f482734cca"
+  },
+  "nodes.web-app.summary": {
+    "text": "The Next.js app: drive, Bao chat, settings, public pages.",
+    "src": "dc298596e40c"
+  },
+  "nodes.web-app.details": {
+    "text": "Runs in the browser and talks to the API through a shared SDK. The access token lives only in memory and comes back on reload via an httpOnly cookie. Uploads use XHR for progress.",
+    "src": "7d40afdeecd0"
+  },
+  "nodes.web-app.interesting": {
+    "text": "Answers and control events share one plain-text stream, split by an ASCII record separator. No WebSockets, and it all saves as one string.",
+    "src": "378968816920"
+  },
+  "nodes.integrations.summary": {
+    "text": "Your own code, calling the API with byosk_ keys.",
+    "src": "9b16e6b8aad7"
+  },
+  "nodes.integrations.details": {
+    "text": "Sends a Bearer key and gets only what that key's scopes allow, under its own rate limit. Can also receive signed file webhooks, which it should verify before trusting.",
+    "src": "719691ad8529"
+  },
+  "nodes.api-gateway.summary": {
+    "text": "The FastAPI front door: auth checks, rate limits, error mapping.",
+    "src": "1867b792aeb4"
+  },
+  "nodes.api-gateway.details": {
+    "text": "Every request passes through here. It mounts the routers, registers the public link catch-all last, and turns storage failures into errors naming the broken provider. A daily task deletes week-old AI chats.",
+    "src": "2530b7b62ebc"
+  },
+  "nodes.api-gateway.interesting": {
+    "text": "Even 500 errors get CORS headers, because the error-catching middleware sits inside CORS. A small mercy for whoever is debugging.",
+    "src": "93b2e4dd6dec"
+  },
+  "nodes.auth-service.summary": {
+    "text": "Logins, sessions, API keys and the audit log.",
+    "src": "ba9a7b3e3c73"
+  },
+  "nodes.auth-service.details": {
+    "text": "Turns each request into a session with full access or an API key with limited scopes. Access tokens last 15 minutes. Refresh tokens last 30 days, rotate on every use and are stored hashed.",
+    "src": "c1adc451a4dd"
+  },
+  "nodes.auth-service.interesting": {
+    "text": "Audit logs store IPs only as salted hashes, so even the logs can't say where you were.",
+    "src": "3358743eb1e1"
+  },
+  "nodes.metadata-engine.summary": {
+    "text": "Everything about your files except the actual bytes.",
+    "src": "c46683812e7b"
+  },
+  "nodes.metadata-engine.details": {
+    "text": "Runs the virtual file system: folders, versions, tags, search and duplicate checks. It picks where uploads go, hands bytes to the storage adapters and fires file events. Bao's write tools call the same functions.",
+    "src": "08b3fc4de532"
+  },
+  "nodes.metadata-engine.interesting": {
+    "text": "The duplicate check runs after the upload, because the hash isn't known until then. A retried upload gets stored, spotted, then deleted.",
+    "src": "d3534a76c7e1"
+  },
+  "nodes.link-resolver.summary": {
+    "text": "Creates and serves permanent links, shared folders and expiring shares.",
+    "src": "33dd375f187d"
+  },
+  "nodes.link-resolver.details": {
+    "text": "Owners create links; anyone can open them, 120 requests a minute per IP. File links stream the current version. Expired shares return 410. If the owner's GitHub or S3 keys broke, visitors get a plain 503; a dead Telegram session comes back as a 409.",
+    "src": "fbb1f43ac461"
+  },
+  "nodes.link-resolver.interesting": {
+    "text": "The ETag is the content hash. Unchanged file? A 304, and Telegram never even hears about it.",
+    "src": "aa00edacb809"
+  },
+  "nodes.storage-layer.summary": {
+    "text": "One storage interface, with Telegram, GitHub and S3 behind it.",
+    "src": "f9c872d00d59"
+  },
+  "nodes.storage-layer.details": {
+    "text": "Each adapter translates its backend's errors into plain ones, including 'these credentials are dead'. Credentials are stored encrypted. Disconnecting GitHub or S3 wipes the credentials but keeps the row while files still point at it. Disconnecting Telegram logs out and deletes it.",
+    "src": "b323e10140d5"
+  },
+  "nodes.storage-layer.interesting": {
+    "text": "There's no replace method. Telegram messages and release assets are basically append-only, so every backend uploads new and moves a pointer.",
+    "src": "d0f04ae6ad4e"
+  },
+  "nodes.webhook-dispatcher.summary": {
+    "text": "Stores webhook subscriptions and sends signed file events.",
+    "src": "925c3a4e6d4e"
+  },
+  "nodes.webhook-dispatcher.details": {
+    "text": "Checks URLs, caps you at 5, then delivers in a background task with a signature and a 5 second timeout. Failed deliveries are logged and dropped. A restart loses anything still pending.",
+    "src": "a09cd1be9dec"
+  },
+  "nodes.webhook-dispatcher.interesting": {
+    "text": "Redirects are off on purpose. Otherwise a URL that passed the private-IP check could redirect itself somewhere internal.",
+    "src": "cba87409de8c"
+  },
+  "nodes.bao-agent.summary": {
+    "text": "The loop that answers questions and drafts plans you review.",
+    "src": "5066269d863d"
+  },
+  "nodes.bao-agent.details": {
+    "text": "Each turn is up to 10 model steps, or 30 when organising. Read tools run right away. Writes run or wait, depending on your mode. It also applies and revises plans, and re-runs failed actions.",
+    "src": "3914296fe936"
+  },
+  "nodes.bao-agent.interesting": {
+    "text": "Plans live on the server, not in the browser, so Apply can only run what the model actually proposed.",
+    "src": "498cffa11428"
+  },
+  "nodes.rag-engine.summary": {
+    "text": "Chunks your files, then finds the right ones with pgvector.",
+    "src": "9dc92a76fd54"
+  },
+  "nodes.rag-engine.details": {
+    "text": "Indexing extracts text, sends near-blank pages to your vision model, cuts text into 1,800-character chunks and stores their embeddings. Search asks Postgres to rank them with pgvector, then the add-ons tidy things up and hits get spread across files. It also checks citations.",
+    "src": "64ac0f16e103"
+  },
+  "nodes.rag-engine.interesting": {
+    "text": "Search happens inside Postgres: pgvector sorts chunks by cosine distance and only the top few rows ever leave. The column stays a plain float array, so any embedding size fits.",
+    "src": "e12a156477fd"
+  },
+  "nodes.llm-client.summary": {
+    "text": "One client for any OpenAI-compatible provider, on your key.",
+    "src": "659dfcf66d0f"
+  },
+  "nodes.llm-client.details": {
+    "text": "Handles chat, tool calls, vision and embeddings against any base URL. If a provider rejects a parameter, it adjusts the request and remembers the fix. Bad keys and rate limits get separate errors.",
+    "src": "d25d4cab7653"
+  },
+  "nodes.llm-client.interesting": {
+    "text": "Reasoning-effort levels are rarely documented, so the client reads 'Supported values are: ...' from the error message and picks the closest.",
+    "src": "4a4b9d5af87c"
+  },
+  "nodes.postgres.summary": {
+    "text": "The source of truth. Everything except the bytes lives here.",
+    "src": "59b856d8f879"
+  },
+  "nodes.postgres.details": {
+    "text": "19 tables across 26 migrations, covering users, files, versions, links, keys, embeddings and Bao's plans. It's also the search engine: pgvector ranks chunk embeddings, and a full-text column plus a trigram index handle file names. Production runs on Supabase in Mumbai.",
+    "src": "96ea2720eff3"
+  },
+  "nodes.postgres.interesting": {
+    "text": "The API-to-database round trip is the main cost per request, so hosting was weighed by how close it sits to this. The free plan settles for Singapore, about 50 ms from Mumbai.",
+    "src": "b02413292023"
+  },
+  "nodes.redis.summary": {
+    "text": "Optional rate limits and a tiny cache. Nobody misses it.",
+    "src": "9d584c6c20ba"
+  },
+  "nodes.redis.details": {
+    "text": "Counts requests for rate limits and caches the storage overview for 30 seconds. Runs locally in docker-compose, but production skips it for now, so rate limits are effectively off there.",
+    "src": "62548d02b58f"
+  },
+  "nodes.redis.interesting": {
+    "text": "Everything fails open. If Redis dies, you lose rate limits and caching, and the API carries on.",
+    "src": "d3bf2a473fc7"
+  },
+  "nodes.telegram.summary": {
+    "text": "Your Telegram account. It's your login and your default storage.",
+    "src": "c617c769f006"
+  },
+  "nodes.telegram.details": {
+    "text": "Files are sent as documents to your Saved Messages and fetched by message id on every download. BYOS caps files at 2 GB; Premium's 4 GB needs the server limit raised. Flood limits become 'try again in N s'.",
+    "src": "a1d48a8da951"
+  },
+  "nodes.telegram.interesting": {
+    "text": "End your Telegram sessions and BYOS notices, then politely asks you to sign in again.",
+    "src": "cac3d3baabbe"
+  },
+  "nodes.github.summary": {
+    "text": "Files stored as release assets in your own repo.",
+    "src": "2ec0542917a6"
+  },
+  "nodes.github.details": {
+    "text": "BYOS makes the repo, private by default, with one commit so releases can be tagged. Uploads land on a daily prerelease. Downloads follow GitHub's redirect to a signed URL.",
+    "src": "a5e121c8b116"
+  },
+  "nodes.github.interesting": {
+    "text": "GitHub sends the token's expiry date on every response, so BYOS can warn you before it runs out.",
+    "src": "c955f061a076"
+  },
+  "nodes.s3.summary": {
+    "text": "Any S3-compatible bucket you connect.",
+    "src": "c3c30aec914c"
+  },
+  "nodes.s3.details": {
+    "text": "Each file is stored under its own uuid path. boto3 runs in worker threads and makes up to 3 attempts per call. Dead keys and keys missing a permission get different error messages.",
+    "src": "5e328b4ed46b"
+  },
+  "nodes.llm-provider.summary": {
+    "text": "Your LLM endpoint and models, on your saved key.",
+    "src": "8b1ad94e430e"
+  },
+  "nodes.llm-provider.details": {
+    "text": "Does chat, tool calls, embeddings, vision and the model list. Your key is stored encrypted and only decrypted to make these calls, or when you hit Reveal (which gets logged).",
+    "src": "e9563d228f78"
+  },
+  "nodes.keep-warm.summary": {
+    "text": "Pokes the app every 5 minutes so it doesn't nap.",
+    "src": "755ad6853de7"
+  },
+  "nodes.keep-warm.details": {
+    "text": "A Google Apps Script hits the web app and the API's /ping, because Render's free tier falls asleep after about 15 idle minutes.",
+    "src": "e2c8a757f640"
+  },
+  "nodes.keep-warm.interesting": {
+    "text": "Keeping both awake all month needs about 1,490 instance-hours. The free tier gives 750. The script's own notes admit this.",
+    "src": "da39a3ee5e6b"
+  },
+  "nodes.browser-apis.summary": {
+    "text": "Device stuff: storage, sound, vibration, PDF rendering, clipboard.",
+    "src": "b4774002ee8b"
+  },
+  "nodes.browser-apis.details": {
+    "text": "Holds per-device preferences, recents, your selected key and mode, and cached model checks. Almost every storage read and write is wrapped, so private windows mostly still work. PDFs for highlighting render with pdf.js.",
+    "src": "603b545a72d0"
+  },
+  "nodes.browser-apis.interesting": {
+    "text": "No sound files ship with the app. Every click and chime is generated live with Web Audio, a few milliseconds at a time.",
+    "src": "ba638956d0cb"
+  },
+  "zones.client.description": {
+    "text": "You, link visitors, the web app, your scripts.",
+    "src": "ea722ad85046"
+  },
+  "zones.backend.description": {
+    "text": "One FastAPI app doing all the actual work.",
+    "src": "8df1cdc016a3"
+  },
+  "zones.data.description": {
+    "text": "Postgres holds everything but the bytes.",
+    "src": "1e87a61caf19"
+  },
+  "zones.user-storage.description": {
+    "text": "Where your bytes actually live. Your accounts.",
+    "src": "cf8ba89499e1"
+  },
+  "zones.third-party.description": {
+    "text": "Your LLM and a keep-awake pinger.",
+    "src": "0508d27b9dcc"
+  },
+  "edges.e1.details": {
+    "text": "Works on desktop and phone. Phones get a bottom tab bar.",
+    "src": "18712b1e6854"
+  },
+  "edges.e2.details": {
+    "text": "Sends the refresh cookie along. On a 401 it refreshes once and retries.",
+    "src": "377bf0d54e2e"
+  },
+  "edges.e3.details": {
+    "text": "Keys starting byosk_ are looked up by prefix. Anything else is treated as a JWT.",
+    "src": "b49cebbd8a1e"
+  },
+  "edges.e4.details": {
+    "text": "20 requests a minute per IP. Hands back an access token and rotates the cookie.",
+    "src": "b4ed426ef659"
+  },
+  "edges.e5.details": {
+    "text": "A fresh Telethon client per step, restored from the encrypted ticket.",
+    "src": "b2fe17f49b3a"
+  },
+  "edges.e6.details": {
+    "text": "Account and storage are created in one transaction.",
+    "src": "21db6fef6749"
+  },
+  "edges.e7.details": {
+    "text": "Every route checks the key's scope and rate limit.",
+    "src": "2c5be1654c2c"
+  },
+  "edges.e8.details": {
+    "text": "Really goes through the gateway. Drawn direct in walkthroughs to save arrows.",
+    "src": "c980c3be367c"
+  },
+  "edges.e9.details": {
+    "text": "An upload's rows and its version pointer land in one commit.",
+    "src": "3ba126ddf493"
+  },
+  "edges.e10.details": {
+    "text": "Reads uploads 1 MiB at a time. Errors come back tagged with the account.",
+    "src": "c51b48bdb6f4"
+  },
+  "edges.e11.details": {
+    "text": "One pooled client per session. Revoked sessions get kicked out of the pool.",
+    "src": "109a524298d4"
+  },
+  "edges.e12.details": {
+    "text": "Release ids cached per repo and day. A 401 means the token was revoked.",
+    "src": "4b74f0c37106"
+  },
+  "edges.e13.details": {
+    "text": "boto3 in worker threads, up to 3 attempts per call.",
+    "src": "1b2bf7bb424c"
+  },
+  "edges.e14.details": {
+    "text": "Flags dead storage on its own database session.",
+    "src": "6a8428e182fc"
+  },
+  "edges.e15.details": {
+    "text": "API keys need the aliases scope. Public routes are rate-limited per IP.",
+    "src": "b253301fdc38"
+  },
+  "edges.e16.details": {
+    "text": "Returns the file, a 304, a folder redirect, a 404, or 410 once expired.",
+    "src": "2d845095b1df"
+  },
+  "edges.e17.details": {
+    "text": "Links that don't exist get the 404 page.",
+    "src": "226061ad1827"
+  },
+  "edges.e18.details": {
+    "text": "Counts share downloads. A missing object marks the file as missing.",
+    "src": "197704d452df"
+  },
+  "edges.e19.details": {
+    "text": "If the owner's GitHub or S3 keys broke, the visitor gets a plain 503; a dead Telegram session gives a 409.",
+    "src": "2cfd5b84f16d"
+  },
+  "edges.e20.details": {
+    "text": "Fixed 60 second window. If Redis fails, requests go through.",
+    "src": "dea55128a332"
+  },
+  "edges.e21.details": {
+    "text": "Fails open, so a Redis outage never blocks a request.",
+    "src": "a6c3ebc01366"
+  },
+  "edges.e22.details": {
+    "text": "Turns off proxy buffering. Control events ride inside the answer text.",
+    "src": "b463a07de9fc"
+  },
+  "edges.e23.details": {
+    "text": "Not streamed, because every provider splits tool calls differently. Step-limited per turn.",
+    "src": "ca152570fcae"
+  },
+  "edges.e24.details": {
+    "text": "Writes use the same functions as the REST API.",
+    "src": "e667143c48dd"
+  },
+  "edges.e25.details": {
+    "text": "Same retrieval pipeline as RAG chat, with this turn's add-ons.",
+    "src": "c396a12a0bad"
+  },
+  "edges.e26.details": {
+    "text": "A plan only moves forward: pending, then applied or discarded.",
+    "src": "94954e438f35"
+  },
+  "edges.e27.details": {
+    "text": "Needs a real login. API keys can't start indexing.",
+    "src": "076708e6cf57"
+  },
+  "edges.e28.details": {
+    "text": "Skips files already embedded at their current version.",
+    "src": "6f43c7aad6d0"
+  },
+  "edges.e29.details": {
+    "text": "Indexing retries each file up to 3 times on rate limits or network errors. The rewrite, HyDE and rerank prompts aren't retried.",
+    "src": "8379c5a4cca1"
+  },
+  "edges.e30.details": {
+    "text": "Ranked in SQL by pgvector cosine distance. Only the top k rows leave the database.",
+    "src": "12f4f6b36183"
+  },
+  "edges.e31.details": {
+    "text": "Pooled httpx client. Rejected parameters get adjusted up to 3 times.",
+    "src": "6d7f1531798d"
+  },
+  "edges.e32.details": {
+    "text": "Fire and forget. The upload doesn't wait.",
+    "src": "9c561088a41c"
+  },
+  "edges.e33.details": {
+    "text": "Own database session, since the request has already finished.",
+    "src": "d9ef7bde9475"
+  },
+  "edges.e34.details": {
+    "text": "5 second timeout, no redirects, no retries.",
+    "src": "ca6495f0050a"
+  },
+  "edges.e35.details": {
+    "text": "120 requests a minute per key. Account-admin routes say 403.",
+    "src": "8cf0470e0a00"
+  },
+  "edges.e36.details": {
+    "text": "Every 5 minutes. Never touches the database or auth.",
+    "src": "be3e01f7bcb9"
+  },
+  "edges.e37.details": {
+    "text": "Every 5 minutes, just to keep it awake.",
+    "src": "4c0318a416a8"
+  },
+  "edges.e38.details": {
+    "text": "Nearly every read and write is wrapped, so private windows mostly still work.",
+    "src": "2335d77e07df"
+  },
+  "edges.e42.details": {
+    "text": "Session login only. Internal URLs are rejected. Max 5.",
+    "src": "2a79571821a9"
+  }
+}

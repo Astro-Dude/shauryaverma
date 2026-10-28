@@ -1,0 +1,1168 @@
+{
+  "project": "Evaratus",
+  "label": "what I did there",
+  "tagline": "Founding SDE intern. I build the worlds AI agents practise in.",
+  "summary": "Evaratus (formerly Scaler AI Labs) builds training grounds for frontier AI labs: working copies of all kinds of real apps, full of realistic data, with tasks and graders, so computer-use agents can learn to use software like people do. I cloned a lot of apps, fetched a lot of data, and run the multi-app side.",
+  "journey": {
+    "stats": [
+      {
+        "value": "30+",
+        "label": "single-app RLs led and built"
+      },
+      {
+        "value": "15M+",
+        "label": "rows of data scraped"
+      },
+      {
+        "value": "300+",
+        "label": "devs clone apps faster with DOM Heist"
+      },
+      {
+        "value": "3,200+",
+        "label": "GitHub contributions in {months} months",
+        "live": "github",
+        "since": "2025-11-17"
+      }
+    ],
+    "grid": {
+      "retail": [
+        0,
+        0
+      ],
+      "saas": [
+        0,
+        1
+      ],
+      "platform": [
+        0,
+        2.5
+      ],
+      "crawler": [
+        1,
+        0
+      ],
+      "exporter": [
+        1,
+        1
+      ],
+      "workspace": [
+        1,
+        3
+      ],
+      "lake": [
+        2,
+        0.5
+      ],
+      "repos": [
+        2,
+        2.5
+      ],
+      "seeder": [
+        3,
+        0.5
+      ],
+      "generator": [
+        1,
+        2
+      ],
+      "pii": [
+        4,
+        1
+      ],
+      "image": [
+        7,
+        2.5
+      ],
+      "db": [
+        5,
+        0.5
+      ],
+      "tasks": [
+        5,
+        1.5
+      ],
+      "app": [
+        6,
+        0.5
+      ],
+      "agent": [
+        6,
+        1.5
+      ],
+      "changelog": [
+        7,
+        0
+      ],
+      "hub": [
+        7,
+        1
+      ],
+      "grader": [
+        8,
+        0.5
+      ],
+      "lab": [
+        8,
+        2
+      ],
+      "original": [
+        5,
+        -1
+      ],
+      "domheist": [
+        6,
+        -1
+      ],
+      "slack": [
+        0,
+        3.5
+      ],
+      "builder": [
+        6,
+        2.5
+      ],
+      "sandbox": [
+        8,
+        3
+      ],
+      "codebase": [
+        2,
+        -1
+      ],
+      "codetask": [
+        3,
+        -1
+      ],
+      "models": [
+        4,
+        -1
+      ]
+    },
+    "chapters": [
+      {
+        "id": "replicas",
+        "when": "Nov 2025 – Aug 2026",
+        "title": "Cloning real apps, convincingly",
+        "role": "Project lead",
+        "summary": "Pick a real app, any kind, rebuild it until an AI agent can’t tell the difference. Then get it real data and seed it in. Then do it again. Thirty-odd times.",
+        "points": [
+          "Led and built 30+ single-app RL environments across every kind of software: CRMs, design tools, website builders, data platforms and plenty more.",
+          "Built DOM Heist to speed the cloning up. 300+ devs across the company now use it to clone apps faster.",
+          "Kept shipping single-app RLs the whole way through, alongside the data work below, right up until I started multi-RL.",
+          "Built and ran each one right on my own machine: one app on its own database, seeded with believable data on a frozen clock, so dates never drift.",
+          "Every write the app makes lands in a change log. Seemed like overkill. It wasn’t (see graders).",
+          "As project lead on the single-app RLs: scoping, reviews, and dragging other people’s apps over the line."
+        ],
+        "skills": [
+          "Next.js",
+          "FastAPI",
+          "SQLite",
+          "SQLAlchemy",
+          "Docker",
+          "Data modelling"
+        ],
+        "nodes": [
+          "original",
+          "domheist",
+          "app",
+          "lake",
+          "seeder",
+          "db",
+          "changelog"
+        ],
+        "edges": [
+          "e-capture",
+          "e-code",
+          "e-raw",
+          "e-seed",
+          "e-load",
+          "e-log"
+        ]
+      },
+      {
+        "id": "tasks",
+        "when": "Nov 2025 – Aug 2026",
+        "title": "Homework, and the marking scheme",
+        "summary": "An app with nothing to do is a screensaver. So every app I built got 1000+ tasks, and a grader that checks the work instead of trusting the vibes.",
+        "points": [
+          "1000+ tasks on every single RL, each written in plain English.",
+          "Graders run yes/no checks on the real database state. No LLM judge, no points for sounding confident.",
+          "Built the change-log tracker, so a grader also sees what the agent broke on the way to the answer."
+        ],
+        "skills": [
+          "Python",
+          "Reward design",
+          "State diffing",
+          "Test design"
+        ],
+        "nodes": [
+          "tasks",
+          "agent",
+          "app",
+          "changelog",
+          "grader",
+          "lab"
+        ],
+        "edges": [
+          "e-prompt",
+          "e-use",
+          "e-log",
+          "e-state",
+          "e-diff",
+          "e-reward"
+        ]
+      },
+      {
+        "id": "crawler",
+        "when": "Feb 2026",
+        "title": "15M+ rows of shopping",
+        "summary": "Alongside the apps, the data side needed hands. I scraped 15M+ rows of product data from retail sites that very much did not want to be scraped.",
+        "points": [
+          "A config per store, about 20 of them: hidden JSON APIs, GraphQL, data tucked inside the page, sitemaps.",
+          "A headless browser only when nothing cheaper worked, and an archive fallback for the one truly impossible site.",
+          "Redis queue, async workers, retries, and one clean schema at the end: prices, images, ratings, variants."
+        ],
+        "skills": [
+          "Python",
+          "Celery",
+          "Redis",
+          "Playwright",
+          "Reverse-engineering APIs"
+        ],
+        "nodes": [
+          "retail",
+          "crawler",
+          "lake"
+        ],
+        "edges": [
+          "e-retail",
+          "e-crawl"
+        ]
+      },
+      {
+        "id": "exporters",
+        "when": "Mar 2026",
+        "title": "Getting data out of work tools",
+        "summary": "Part of the team that built exporters for email, drive, calendar, chat and code hosting: the raw material that makes worlds feel real.",
+        "points": [
+          "A plugin per platform and a rate limiter per connector, so nobody gets banned halfway through.",
+          "Claim-based work: a crash resumes exactly where it stopped, not from zero.",
+          "Big exports fan out across machines with Ray and land in object storage as JSONL."
+        ],
+        "skills": [
+          "asyncio",
+          "Ray",
+          "OAuth",
+          "Pagination",
+          "S3"
+        ],
+        "nodes": [
+          "saas",
+          "exporter",
+          "lake"
+        ],
+        "edges": [
+          "e-saas",
+          "e-export"
+        ]
+      },
+      {
+        "id": "pii",
+        "when": "Mar 2026 – now",
+        "title": "Swapping out real people",
+        "summary": "The moment we started collecting human data, real people came with it. Every real name, email, phone and company has to go, and its fake has to be the same everywhere it shows up.",
+        "points": [
+          "Been doing PII replacement since the first human data came in: the exports first, every multi-RL world after that.",
+          "Built the PII stage every world now goes through: a roster, NER, regex and checksum checks, and an LLM for the ambiguous ones.",
+          "One mapping store: one real value, one fake, across every app and every file format.",
+          "A byte-level scan at the end. Zero leaks or it doesn’t ship. Also fixed everything an external audit turned up."
+        ],
+        "skills": [
+          "NER",
+          "spaCy",
+          "LLMs",
+          "Data privacy"
+        ],
+        "nodes": [
+          "exporter",
+          "lake",
+          "seeder",
+          "pii",
+          "db"
+        ],
+        "edges": [
+          "e-export",
+          "e-raw",
+          "e-scrub",
+          "e-fakes"
+        ]
+      },
+      {
+        "id": "coding",
+        "when": "Apr – May 2026",
+        "title": "Coding RL: bugs the best models can’t fix",
+        "summary": "A short detour into a very different kind of RL. Take a big, real codebase, find a bug, and write it up so that even the best AI models today can’t solve it.",
+        "points": [
+          "Hunted bugs in compilers, formatters, doc tools and full product codebases, plus a few competitive-programming problems.",
+          "Picked fixes that span three or more files, sometimes more than one PR: models patch the obvious file and miss the rest.",
+          "Wrote each task as the symptom, not the cause: one reproducer, no file names, nothing a model can simply search for.",
+          "Packaged each one in a container with hidden tests, one per case, and kept it only if the best models scored zero."
+        ],
+        "skills": [
+          "Rust",
+          "TypeScript",
+          "Python",
+          "Docker",
+          "Adversarial testing"
+        ],
+        "nodes": [
+          "codebase",
+          "codetask",
+          "models"
+        ],
+        "edges": [
+          "e-bug",
+          "e-try"
+        ]
+      },
+      {
+        "id": "multi-rl",
+        "when": "Sep 2026 – now",
+        "title": "Starting multi-RL",
+        "role": "Leading the multi-RL division",
+        "summary": "Ten months of single apps taught me this: one app is a toy, but a real job is five to ten apps that all know the same people. So I built multi-RL from the ground up, and now lead the whole division.",
+        "points": [
+          "A world is one persona, say an equity research associate, with 5 to 10 apps sharing one cast, one clock and one set of events.",
+          "Tasks hop across apps: read the filing, update the model, email the client.",
+          "All the apps ship in one image behind a control hub: app registry, cross-app event bus, one combined state for grading.",
+          "A whole world in one image gets too big for a laptop to handle, so multi-RL development moved to cloud workspaces.",
+          "Built the first worlds myself to find out where it hurts, then standardised it: one standard and runbook for how every app and world is built, so anyone can follow it."
+        ],
+        "skills": [
+          "System design",
+          "Redis Streams",
+          "nginx",
+          "Docker",
+          "Leading a team"
+        ],
+        "nodes": [
+          "db",
+          "app",
+          "agent",
+          "hub",
+          "grader",
+          "lab"
+        ],
+        "edges": [
+          "e-load",
+          "e-use",
+          "e-events",
+          "e-combined",
+          "e-reward"
+        ]
+      },
+      {
+        "id": "pipeline",
+        "when": "Oct 2026",
+        "title": "Automating the whole thing",
+        "summary": "I automated the entire multi-RL creation pipeline from scratch, alone, and abstracted it so anyone on the team can create a world without knowing the plumbing. It cuts the effort of building one by about 60%.",
+        "points": [
+          "With the standard in place, creating a world became a form: pick the persona and the apps. The generator tags each app, renders the world’s repo and pushes it, and writes down whatever the apps still lack.",
+          "Every development phase runs as an automated session in the developer’s cloud workspace, raising PRs as it goes. Progress is read from GitHub, never from a job saying “trust me, done”.",
+          "Every world has a Slack thread that tracks the automatic build: what stage it’s at, each phase starting and finishing, every PR to review with Approve & merge buttons. Anything that goes quiet gets flagged.",
+          "Releases are cheap: each app is built once per commit and shared between worlds; a world only adds a thin layer with its config and data. Then an offline QA sandbox, a sign-off, an admin’s approval, and it ships."
+        ],
+        "phasesTitle": "how a world gets built, phase by phase",
+        "phasesNote": "5 comes after 6a on purpose: QA tests the exact tagged build that ships.",
+        "phases": [
+          {
+            "n": "0",
+            "name": "Repo creation",
+            "what": "A form on the platform. The generator tags every chosen app, renders the world’s repo from the template and pushes it, then says so in Slack.",
+            "nodes": [
+              "platform",
+              "generator",
+              "repos",
+              "slack"
+            ]
+          },
+          {
+            "n": "1",
+            "name": "Suite setup",
+            "what": "Closes every gap the apps came with: one PR per app, tested and green, reviewed and merged from Slack; then the world is repinned to the merged code.",
+            "nodes": [
+              "platform",
+              "workspace",
+              "repos",
+              "slack"
+            ]
+          },
+          {
+            "n": "2",
+            "name": "Subject shortlist",
+            "what": "Reads the available exports, scores them, and shortlists whose data the world is built on. A human picks on the platform.",
+            "nodes": [
+              "platform",
+              "workspace",
+              "lake"
+            ]
+          },
+          {
+            "n": "3",
+            "name": "Data seeding",
+            "what": "A seeding brief first, then every app’s database filled from that one export, with links between apps intact.",
+            "nodes": [
+              "workspace",
+              "lake",
+              "seeder",
+              "db",
+              "app"
+            ]
+          },
+          {
+            "n": "4",
+            "name": "PII replacement",
+            "what": "Scan, review, replace, reseed. Zero leaks, zero variants, links re-audited.",
+            "nodes": [
+              "workspace",
+              "seeder",
+              "pii",
+              "db"
+            ]
+          },
+          {
+            "n": "4b",
+            "name": "Persona documents",
+            "what": "The three docs a world ships with: an external profile, an internal reference, and a QA guide.",
+            "nodes": [
+              "workspace",
+              "repos"
+            ]
+          },
+          {
+            "n": "6a",
+            "name": "Release-ready",
+            "what": "Unattended checks on pins, the image contract, cross-app links and seed data; the data gets published; the world gets tagged for release.",
+            "nodes": [
+              "workspace",
+              "repos",
+              "db",
+              "builder"
+            ]
+          },
+          {
+            "n": "5",
+            "name": "QA",
+            "what": "The tagged build, run in an offline sandbox: an automated QA pass, then a person signs off for those exact images.",
+            "nodes": [
+              "builder",
+              "image",
+              "sandbox"
+            ]
+          },
+          {
+            "n": "6b",
+            "name": "Release",
+            "what": "Built from the tag, release requested, approved by an admin, published to the lab.",
+            "nodes": [
+              "platform",
+              "image",
+              "sandbox",
+              "lab"
+            ]
+          }
+        ],
+        "skills": [
+          "Next.js",
+          "FastAPI",
+          "PostgreSQL",
+          "Job queues",
+          "GitHub API",
+          "Slack API"
+        ],
+        "nodes": [
+          "platform",
+          "slack",
+          "generator",
+          "workspace",
+          "repos",
+          "lake",
+          "seeder",
+          "pii",
+          "db",
+          "app",
+          "builder",
+          "image",
+          "sandbox",
+          "lab"
+        ],
+        "edges": [
+          "e-create",
+          "e-tag",
+          "e-review",
+          "e-ws",
+          "e-prs",
+          "e-phase",
+          "e-raw",
+          "e-scrub",
+          "e-fakes",
+          "e-load",
+          "e-seeddata",
+          "e-release",
+          "e-layers",
+          "e-qa",
+          "e-ship"
+        ],
+        "follow": true
+      }
+    ]
+  },
+  "features": [],
+  "nodes": [
+    {
+      "id": "retail",
+      "label": "Retail sites",
+      "zone": "sources",
+      "kind": "external",
+      "tech": [
+        "Storefronts"
+      ],
+      "summary": "Online stores, full of products, not keen on sharing them.",
+      "details": "About 20 retail sites, each with its own idea of how product data should be hidden: private JSON APIs, GraphQL, data stuffed into the page, sitemaps.",
+      "interesting": null
+    },
+    {
+      "id": "saas",
+      "label": "Work tools",
+      "zone": "sources",
+      "kind": "external",
+      "tech": [
+        "Email, drive, chat, code"
+      ],
+      "summary": "Where a company actually keeps its work.",
+      "details": "Email, drive, calendar, chat and code hosting. Each has its own API, its own pagination, and its own rate limits waiting to ban you.",
+      "interesting": null
+    },
+    {
+      "id": "platform",
+      "label": "Internal platform",
+      "zone": "factory",
+      "kind": "ui",
+      "tech": [
+        "Next.js",
+        "FastAPI",
+        "PostgreSQL"
+      ],
+      "summary": "Where a world is created, tracked and released.",
+      "details": "The team’s internal platform. Creating a world is a form: pick the persona and the apps. From there it starts every phase, tracks each one from GitHub, sends reviews to Slack, then builds, QA’s and releases the world.",
+      "interesting": "Progress is read from GitHub (PRs, checks, merges), never from a job saying “trust me, done”."
+    },
+    {
+      "id": "crawler",
+      "label": "Crawler",
+      "zone": "pipelines",
+      "kind": "worker",
+      "tech": [
+        "Python",
+        "Celery",
+        "Redis"
+      ],
+      "summary": "Pulls product catalogues into one clean schema.",
+      "details": "A config per store, a Redis queue, async workers. Per site it takes the cheapest honest route in, and only fires up a headless browser when nothing else works.",
+      "interesting": "15M+ rows of products later, I know far too much about variant SKUs."
+    },
+    {
+      "id": "exporter",
+      "label": "Exporters",
+      "zone": "pipelines",
+      "kind": "worker",
+      "tech": [
+        "Python",
+        "asyncio",
+        "Ray"
+      ],
+      "summary": "Gets a workspace’s data out, safely, and picks up where it left off.",
+      "details": "A plugin per platform and a rate limiter per connector. Work is claimed in chunks, so a crash resumes exactly where it stopped. Big runs fan out across machines with Ray.",
+      "interesting": null
+    },
+    {
+      "id": "workspace",
+      "label": "Cloud workspace",
+      "zone": "factory",
+      "kind": "service",
+      "tech": [
+        "Cloud dev env",
+        "tmux",
+        "GitHub"
+      ],
+      "summary": "Where multi-RL gets built, because a laptop can’t.",
+      "details": "Single apps were fine on a laptop. A whole world, every app in one image, is too big to handle locally, so each developer gets their own cloud workspace with the world checked out. Each phase runs there as an automated session that raises PRs as it goes; the platform follows its live log and flags it if it goes quiet.",
+      "interesting": null
+    },
+    {
+      "id": "lake",
+      "label": "Object storage",
+      "zone": "data",
+      "kind": "storage",
+      "tech": [
+        "AWS S3",
+        "JSONL"
+      ],
+      "summary": "Where all the raw data lands.",
+      "details": "Scraped catalogues and workspace exports end up here as JSONL. Later, worlds pick the export they are built from out of this pile.",
+      "interesting": null
+    },
+    {
+      "id": "repos",
+      "label": "App + world repos",
+      "zone": "factory",
+      "kind": "storage",
+      "tech": [
+        "GitHub",
+        "Git tags"
+      ],
+      "summary": "Every app’s repo, and each world’s repo pinning them.",
+      "details": "Each app lives in its own repo. A world’s repo pins every app to an immutable tag, never a branch, so what was tested is exactly what ships. Every phase leaves its work here as PRs.",
+      "interesting": null
+    },
+    {
+      "id": "seeder",
+      "label": "Seeding pipeline",
+      "zone": "pipelines",
+      "kind": "worker",
+      "tech": [
+        "Python",
+        "SQLAlchemy"
+      ],
+      "summary": "Fills every app’s database with believable data.",
+      "details": "For a single app: realistic rows on a frozen clock, so “last Tuesday” means the same thing forever. For a world: one cast and one timeline written into every app at once, links between apps kept intact.",
+      "interesting": null
+    },
+    {
+      "id": "generator",
+      "label": "Suite generator",
+      "zone": "factory",
+      "kind": "service",
+      "tech": [
+        "Python",
+        "GitHub API",
+        "Job queue"
+      ],
+      "summary": "Turns “these apps, this persona” into a world’s repo.",
+      "details": "Runs as a job: tags every chosen app, pins each one and the control hub, renders the world’s repo from one template and pushes it. Whatever an app still lacks against the standard is written down for phase 1 to fix.",
+      "interesting": null
+    },
+    {
+      "id": "pii",
+      "label": "PII engine",
+      "zone": "pipelines",
+      "kind": "service",
+      "tech": [
+        "NER",
+        "Regex",
+        "LLM"
+      ],
+      "summary": "Real people out, convincing fakes in.",
+      "details": "Finds every real name, email, phone, ID and company with a roster, NER, regex and checksum checks, and an LLM for the ambiguous ones. One mapping store means one real value always becomes the same fake, in every app and file.",
+      "interesting": "It ends with a byte-level scan. Zero leaks, or it doesn’t ship."
+    },
+    {
+      "id": "image",
+      "label": "Image registry",
+      "zone": "delivery",
+      "kind": "storage",
+      "tech": [
+        "Docker",
+        "AWS ECR"
+      ],
+      "summary": "Every image a world ships, by digest.",
+      "details": "The base images, each world’s layers and its hub, pushed here and recorded in a release manifest that everything after is rendered from.",
+      "interesting": null
+    },
+    {
+      "id": "db",
+      "label": "App databases",
+      "zone": "data",
+      "kind": "database",
+      "tech": [
+        "SQLite",
+        "SQLAlchemy"
+      ],
+      "summary": "Each app’s own data, seeded and ready.",
+      "details": "Every app runs on its own database. The seeding pipeline fills it, the app reads and writes it while the agent works, and the grader checks it afterwards.",
+      "interesting": null
+    },
+    {
+      "id": "tasks",
+      "label": "Tasks",
+      "zone": "environments",
+      "kind": "storage",
+      "tech": [
+        "JSON specs"
+      ],
+      "summary": "Jobs for the agent, in plain English.",
+      "details": "1000+ on every single app. In a world, a task can hop across apps: read the filing, update the model, email the client.",
+      "interesting": null
+    },
+    {
+      "id": "original",
+      "label": "The real app",
+      "zone": "sources",
+      "kind": "external",
+      "tech": [
+        "Any product"
+      ],
+      "summary": "Where every replica starts: the real thing.",
+      "details": "Every single-app RL begins with a real product. Its screens, flows and quirks are the spec; the replica has to match it closely enough that an agent trained on one can use the other.",
+      "interesting": null
+    },
+    {
+      "id": "domheist",
+      "label": "DOM Heist",
+      "zone": "pipelines",
+      "kind": "extension",
+      "tech": [
+        "Chrome extension",
+        "JavaScript"
+      ],
+      "summary": "Lifts any part of a real app’s UI as clean code.",
+      "details": "My Chrome extension: pick a component on any site and get standalone HTML plus a compact spec an LLM can build from. It turns “stare at the screen and rebuild it” into a starting point in seconds.",
+      "interesting": "300+ devs across the company use it to clone apps faster."
+    },
+    {
+      "id": "app",
+      "label": "Replica apps",
+      "zone": "environments",
+      "kind": "ui",
+      "tech": [
+        "Next.js",
+        "FastAPI",
+        "Docker"
+      ],
+      "summary": "Working copies of real apps, of every kind.",
+      "details": "CRMs, design tools, site builders, data platforms and a long tail of others. Built to look and behave like the real thing, so an agent that learns here can work there.",
+      "interesting": "The design tool replica reads the real binary file format, about 27.6k canvas nodes per file."
+    },
+    {
+      "id": "agent",
+      "label": "AI agent",
+      "zone": "environments",
+      "kind": "actor",
+      "tech": [
+        "Computer-use model"
+      ],
+      "summary": "The student. Clicks, types, occasionally panics.",
+      "details": "A computer-use model that gets a task and a screen, and has to do the job like a person would.",
+      "interesting": null
+    },
+    {
+      "id": "changelog",
+      "label": "Change log",
+      "zone": "data",
+      "kind": "database",
+      "tech": [
+        "SQLAlchemy events"
+      ],
+      "summary": "Every write the app makes, recorded.",
+      "details": "Hooked into the app’s database layer, so the grader can see not just the end state but everything the agent touched on the way.",
+      "interesting": null
+    },
+    {
+      "id": "hub",
+      "label": "Control hub",
+      "zone": "environments",
+      "kind": "service",
+      "tech": [
+        "FastAPI",
+        "Redis Streams",
+        "nginx"
+      ],
+      "summary": "Glues a world’s apps together.",
+      "details": "An app registry, a cross-app event bus on Redis Streams, and one combined state across every app, for grading.",
+      "interesting": null
+    },
+    {
+      "id": "grader",
+      "label": "Grader",
+      "zone": "environments",
+      "kind": "service",
+      "tech": [
+        "Python"
+      ],
+      "summary": "Marks the agent’s work. No vibes allowed.",
+      "details": "Yes/no checks on the real state, averaged into a score. No LLM judge. Penalties come from the change log, so collateral damage costs points.",
+      "interesting": null
+    },
+    {
+      "id": "lab",
+      "label": "AI lab",
+      "zone": "delivery",
+      "kind": "external",
+      "tech": [
+        "Training pipeline"
+      ],
+      "summary": "Where it all ends up.",
+      "details": "Released worlds and their rewards go to the lab’s training pipeline, where agents practise on them.",
+      "interesting": null
+    },
+    {
+      "id": "slack",
+      "label": "Slack",
+      "zone": "factory",
+      "kind": "external",
+      "tech": [
+        "Interactive messages"
+      ],
+      "summary": "Where everyone sees what stage a world is at, and reviews it.",
+      "details": "Each world gets one Slack thread that tracks the automatic build as it goes: which phase started, which finished, what stage the world is at now, and every PR it raised, with Approve & merge buttons right there. Questions for the developer go by DM. Whoever clicks merge does it with their own GitHub access.",
+      "interesting": null
+    },
+    {
+      "id": "builder",
+      "label": "Release builder",
+      "zone": "factory",
+      "kind": "worker",
+      "tech": [
+        "Docker",
+        "Job queue"
+      ],
+      "summary": "Builds a world’s images from its release tag.",
+      "details": "Each app is built once per commit as a base image and shared by every world that pins it. A world only adds a thin layer on top with its own config and seed data, which takes seconds. The control hub goes last, since it carries the world’s grader.",
+      "interesting": "Images are recorded by digest, not tag: tags move, digests don’t."
+    },
+    {
+      "id": "sandbox",
+      "label": "QA sandbox",
+      "zone": "delivery",
+      "kind": "service",
+      "tech": [
+        "Docker Compose",
+        "Remote desktop"
+      ],
+      "summary": "The world, run offline, for QA.",
+      "details": "The release runs in a sandbox with a QA desktop and no internet at all, so anything that secretly needs the web breaks here instead of at the lab. An automated QA pass first, then a person signs off for those exact images.",
+      "interesting": null
+    },
+    {
+      "id": "codebase",
+      "label": "Real codebases",
+      "zone": "sources",
+      "kind": "external",
+      "tech": [
+        "Large, real-world code"
+      ],
+      "summary": "Big, real software, warts and all.",
+      "details": "Compilers, formatters, doc-site tools, template engines and full product codebases. Large enough that the bug is a needle in a haystack.",
+      "interesting": null
+    },
+    {
+      "id": "codetask",
+      "label": "Coding tasks",
+      "zone": "environments",
+      "kind": "storage",
+      "tech": [
+        "Docker",
+        "Hidden tests"
+      ],
+      "summary": "A bug, written up so it can’t be googled.",
+      "details": "One reproducer, the symptom in plain words, no file names. The fix has to land across several files. Each task ships in a container with hidden tests, one per case, so a half-fix gets half marks.",
+      "interesting": "The best tasks needed changes in three files at once; models kept patching the obvious one and stopping."
+    },
+    {
+      "id": "models",
+      "label": "Best AI models",
+      "zone": "delivery",
+      "kind": "actor",
+      "tech": [
+        "Today’s frontier models"
+      ],
+      "summary": "The ones the task has to beat.",
+      "details": "Every task is tried against the strongest models around. If any of them solves it, it isn’t hard enough, and it goes back for another round.",
+      "interesting": null
+    }
+  ],
+  "zones": [
+    {
+      "id": "sources",
+      "label": "sources"
+    },
+    {
+      "id": "pipelines",
+      "label": "pipelines"
+    },
+    {
+      "id": "data",
+      "label": "data"
+    },
+    {
+      "id": "environments",
+      "label": "environments"
+    },
+    {
+      "id": "factory",
+      "label": "factory"
+    },
+    {
+      "id": "delivery",
+      "label": "delivery"
+    }
+  ],
+  "edges": [
+    {
+      "id": "e-retail",
+      "from": "retail",
+      "to": "crawler",
+      "label": "product pages",
+      "protocol": "HTTP",
+      "mode": "sync"
+    },
+    {
+      "id": "e-saas",
+      "from": "saas",
+      "to": "exporter",
+      "label": "mail, docs, chat, code",
+      "protocol": "REST + GraphQL",
+      "mode": "sync"
+    },
+    {
+      "id": "e-crawl",
+      "from": "crawler",
+      "to": "lake",
+      "label": "15M+ rows",
+      "protocol": "S3",
+      "mode": "async"
+    },
+    {
+      "id": "e-export",
+      "from": "exporter",
+      "to": "lake",
+      "label": "JSONL, resumable",
+      "protocol": "S3",
+      "mode": "async"
+    },
+    {
+      "id": "e-capture",
+      "from": "original",
+      "to": "domheist",
+      "label": "captures the UI",
+      "protocol": "DOM",
+      "mode": "sync"
+    },
+    {
+      "id": "e-code",
+      "from": "domheist",
+      "to": "app",
+      "label": "code to build from",
+      "protocol": "HTML + spec",
+      "mode": "sync"
+    },
+    {
+      "id": "e-raw",
+      "from": "lake",
+      "to": "seeder",
+      "label": "the data",
+      "protocol": "S3",
+      "mode": "sync"
+    },
+    {
+      "id": "e-scrub",
+      "from": "seeder",
+      "to": "pii",
+      "label": "seeded data",
+      "protocol": "Python",
+      "mode": "sync"
+    },
+    {
+      "id": "e-fakes",
+      "from": "pii",
+      "to": "db",
+      "label": "same fakes, reseeded",
+      "protocol": "SQL",
+      "mode": "sync"
+    },
+    {
+      "id": "e-seed",
+      "from": "seeder",
+      "to": "db",
+      "label": "writes the rows",
+      "protocol": "SQL",
+      "mode": "sync"
+    },
+    {
+      "id": "e-load",
+      "from": "db",
+      "to": "app",
+      "label": "seeds the app",
+      "protocol": "SQL",
+      "mode": "sync"
+    },
+    {
+      "id": "e-prompt",
+      "from": "tasks",
+      "to": "agent",
+      "label": "the job",
+      "protocol": "JSON",
+      "mode": "sync"
+    },
+    {
+      "id": "e-use",
+      "from": "agent",
+      "to": "app",
+      "label": "clicks and types",
+      "protocol": "Browser",
+      "mode": "stream"
+    },
+    {
+      "id": "e-log",
+      "from": "app",
+      "to": "changelog",
+      "label": "every write",
+      "protocol": "SQLAlchemy events",
+      "mode": "event"
+    },
+    {
+      "id": "e-state",
+      "from": "app",
+      "to": "grader",
+      "label": "final state",
+      "protocol": "HTTP",
+      "mode": "sync"
+    },
+    {
+      "id": "e-diff",
+      "from": "changelog",
+      "to": "grader",
+      "label": "what changed",
+      "protocol": "SQL",
+      "mode": "sync"
+    },
+    {
+      "id": "e-events",
+      "from": "app",
+      "to": "hub",
+      "label": "cross-app events",
+      "protocol": "Redis Streams",
+      "mode": "event"
+    },
+    {
+      "id": "e-combined",
+      "from": "hub",
+      "to": "grader",
+      "label": "one combined state",
+      "protocol": "HTTP",
+      "mode": "sync"
+    },
+    {
+      "id": "e-reward",
+      "from": "grader",
+      "to": "lab",
+      "label": "reward",
+      "protocol": "JSON",
+      "mode": "sync"
+    },
+    {
+      "id": "e-create",
+      "from": "platform",
+      "to": "generator",
+      "label": "new world: persona + apps",
+      "protocol": "Job queue",
+      "mode": "async"
+    },
+    {
+      "id": "e-tag",
+      "from": "generator",
+      "to": "repos",
+      "label": "tags apps, pushes the world",
+      "protocol": "GitHub API",
+      "mode": "sync"
+    },
+    {
+      "id": "e-ws",
+      "from": "platform",
+      "to": "workspace",
+      "label": "starts each phase",
+      "protocol": "SSH",
+      "mode": "async"
+    },
+    {
+      "id": "e-review",
+      "from": "platform",
+      "to": "slack",
+      "label": "stage updates, reviews",
+      "protocol": "Slack API",
+      "mode": "event"
+    },
+    {
+      "id": "e-prs",
+      "from": "workspace",
+      "to": "repos",
+      "label": "a PR per app, per phase",
+      "protocol": "GitHub",
+      "mode": "sync"
+    },
+    {
+      "id": "e-phase",
+      "from": "workspace",
+      "to": "seeder",
+      "label": "runs seeding + PII",
+      "protocol": "Shell",
+      "mode": "async"
+    },
+    {
+      "id": "e-seeddata",
+      "from": "db",
+      "to": "builder",
+      "label": "seed data, published",
+      "protocol": "S3",
+      "mode": "sync"
+    },
+    {
+      "id": "e-release",
+      "from": "repos",
+      "to": "builder",
+      "label": "the release tag",
+      "protocol": "Git",
+      "mode": "sync"
+    },
+    {
+      "id": "e-layers",
+      "from": "builder",
+      "to": "image",
+      "label": "base + world layers",
+      "protocol": "Docker",
+      "mode": "sync"
+    },
+    {
+      "id": "e-qa",
+      "from": "image",
+      "to": "sandbox",
+      "label": "run offline",
+      "protocol": "Docker",
+      "mode": "sync"
+    },
+    {
+      "id": "e-ship",
+      "from": "sandbox",
+      "to": "lab",
+      "label": "signed off, released",
+      "protocol": "Registry",
+      "mode": "sync"
+    },
+    {
+      "id": "e-bug",
+      "from": "codebase",
+      "to": "codetask",
+      "label": "a bug, written up vaguely",
+      "protocol": "Git",
+      "mode": "sync"
+    },
+    {
+      "id": "e-try",
+      "from": "codetask",
+      "to": "models",
+      "label": "tried: nobody solves it",
+      "protocol": "Docker",
+      "mode": "sync"
+    }
+  ]
+}

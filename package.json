@@ -15,7 +15,8 @@
     "build:site": "tsc --noEmit && vite build",
     "build:netflix": "npm --prefix netflix ci --no-audit --no-fund && npm --prefix netflix run build && node tools/stage-netflix.mjs",
     "preview:deploy": "node tools/serve-preview.mjs",
-    "check:vercel": "node tools/check-vercel.mjs"
+    "check:vercel": "node tools/check-vercel.mjs",
+    "arch:sync": "node tools/sync-architecture.mjs"
   },
   "devDependencies": {
     "@types/three": "^0.171.0",

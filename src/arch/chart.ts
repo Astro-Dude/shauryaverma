@@ -41,6 +41,11 @@ export interface GraphSpec {
   zones?: boolean;
   /** Keep every edge label visible, not only the lit ones. */
   labels?: boolean;
+  /**
+   * Fixed column per node, in node widths (halves allowed). When given, layers keep their order and
+   * each node sits in its column instead of being centred, so a hand-placed map stays as drawn.
+   */
+  columns?: Record<string, number>;
 }
 
 type Side = 't' | 'b' | 'l' | 'r';
@@ -91,6 +96,32 @@ export const FONT_PILL = '500 10px "Geist Mono", monospace';
 /** How far the isometric top and side faces stick out behind each box. */
 const DEPTH = 10;
 
+type Shape = 'person' | 'window' | 'server' | 'queue' | 'cylinder' | 'bucket' | 'cloud' | 'chip' | 'block';
+
+function shapeOf(kind: NodeKind): Shape {
+  switch (kind) {
+    case 'actor': return 'person';
+    case 'ui':
+    case 'extension': return 'window';
+    case 'service':
+    case 'api':
+    case 'worker': return 'server';
+    case 'queue': return 'queue';
+    case 'database':
+    case 'cache': return 'cylinder';
+    case 'storage': return 'bucket';
+    case 'external': return 'cloud';
+    case 'browser-api': return 'chip';
+    default: return 'block';
+  }
+}
+
+/** Only box-like shapes have isometric faces; arrows land on those faces, so ports need to know. */
+function depthOf(kind: NodeKind): number {
+  const s = shapeOf(kind);
+  return s === 'window' || s === 'server' || s === 'queue' || s === 'block' ? DEPTH : 0;
+}
+
 function textWidth(text: string, font: string, letterSpacing = 0): number {
   measureCtx.font = font;
   return measureCtx.measureText(text).width + letterSpacing * text.length;
@@ -113,6 +144,8 @@ const bez = (a: number, b: number, c: number, d: number, t: number) => {
   return u * u * u * a + 3 * u * u * t * b + 3 * u * t * t * c + t * t * t * d;
 };
 
+type Pt = { x: number; y: number };
+
 const NORMAL: Record<Side, [number, number]> = { t: [0, -1], b: [0, 1], l: [-1, 0], r: [1, 0] };
 
 interface Placed { spec: GNode; layer: number; x: number; y: number; g: SVGGElement }
@@ -131,8 +164,12 @@ export class Chart {
   private readonly arrow: string;
   private readonly arrowHot: string;
   private stipple = '';
+  private readonly edgeG = el('g', { class: 'arch-edges' });
+  private readonly labelG = el('g', { class: 'arch-labels' });
   /** Width the chart wants at 1:1, so the popup can give wide ones a full row. */
   naturalWidth = 0;
+  naturalHeight = 0;
+  private sizer: ResizeObserver | null = null;
 
   private placed = new Map<string, Placed>();
   private routed = new Map<string, Routed>();
@@ -141,6 +178,8 @@ export class Chart {
   private hover: { type: 'node' | 'edge'; id: string } | null = null;
   private selected: string | null = null;
   private focusEdges: Set<string> | null = null;
+  /** A standing highlight set from outside, e.g. the chapter being read. Hover still wins. */
+  private spot: { nodes: Set<string>; edges: Set<string> } | null = null;
 
   /** The fitted viewBox, and the current one after any zoom or pan. */
   private base = { x: 0, y: 0, w: 1, h: 1 };
@@ -185,6 +224,24 @@ export class Chart {
     this.layout();
     this.bind();
     this.bindViewport();
+    this.fitToBox();
+  }
+
+  /*
+   * The SVG always spans its whole frame, so zooming and dragging clip at the frame's border and
+   * never at some narrower inner edge. Its height follows the width it is given, capped at the
+   * chart's natural height so small charts are never blown up past 1:1. The viewBox does the
+   * centring (xMidYMid meet).
+   */
+  private fitToBox(): void {
+    const apply = () => {
+      const w = this.el.clientWidth;
+      if (!w) return;
+      const h = Math.min(this.naturalHeight, (w * this.naturalHeight) / this.naturalWidth);
+      this.svg.style.height = `${Math.round(h)}px`;
+    };
+    this.sizer = new ResizeObserver(apply);
+    this.sizer.observe(this.el);
   }
 
   /* ------------------------------------------------------------------ layout */
@@ -211,7 +268,7 @@ export class Chart {
       (nb.get(e.from) ?? nb.set(e.from, []).get(e.from)!).push(e.to);
       (nb.get(e.to) ?? nb.set(e.to, []).get(e.to)!).push(e.from);
     }
-    for (let it = 0; it < 4; it++) {
+    for (let it = 0; it < (spec.columns ? 0 : 4); it++) {
       for (const pass of [layers.map((_, i) => i), layers.map((_, i) => layers.length - 1 - i)]) {
         for (const i of pass) {
           const l = layers[i];
@@ -236,8 +293,7 @@ export class Chart {
     const maxExtent = Math.max(...extents);
 
     const zoneG = el('g', { class: 'arch-zones' });
-    const edgeG = el('g', { class: 'arch-edges' });
-    const labelG = el('g', { class: 'arch-labels' });
+    const { edgeG, labelG } = this;
     const nodeG = el('g', { class: 'arch-nodes' });
 
     layers.forEach((l, i) => {
@@ -261,7 +317,8 @@ export class Chart {
         zoneG.append(g);
       }
       l.nodes.forEach((n, j) => {
-        const c = cross0 + j * (crossSize + crossGap);
+        const col = spec.columns?.[n.id];
+        const c = col !== undefined ? col * (crossSize + crossGap) : cross0 + j * (crossSize + crossGap);
         const x = lr ? main0 + zonePad : c;
         const y = lr ? zoneHead + c : main0;
         const g = this.drawNode(n, x, y);
@@ -281,47 +338,131 @@ export class Chart {
       grow(x, y - 44); grow(x + +r.getAttribute('width')!, y + +r.getAttribute('height')!);
     });
 
-    this.route(edgeG, labelG, grow);
+    this.route(grow);
 
-    const pad = 24;
+    const pad = 36;
     const vw = bounds.x1 - bounds.x0 + pad * 2;
     const vh = bounds.y1 - bounds.y0 + pad * 2;
     this.base = { x: bounds.x0 - pad, y: bounds.y0 - pad, w: vw, h: vh };
     this.vb = { ...this.base };
     this.applyView();
-    this.svg.setAttribute('width', String(Math.round(vw)));
     this.el.style.setProperty('--natural-w', `${Math.round(vw)}px`);
     this.naturalWidth = vw;
-    this.el.style.setProperty('--ratio', String(vh / vw));
+    this.naturalHeight = vh;
 
     this.root.append(zoneG, edgeG, this.trail, labelG, nodeG, this.packet);
   }
 
-  /** A box drawn as a little isometric block: front face, a top face and a stippled side. */
+  /**
+   * Each part is drawn as what it is: a cylinder for a database, a rack unit for a server, a
+   * browser window for a page, a cloud for someone else's service. Box-like shapes get an
+   * isometric top and a stippled side; flat ones get the hard offset shadow instead.
+   */
   private drawNode(n: GNode, x: number, y: number): SVGGElement {
     const { W, H } = this;
-    const D = n.kind === 'actor' ? 0 : DEPTH;
+    const shape = shapeOf(n.kind);
+    const D = depthOf(n.kind);
     const g = el('g', {
-      class: `arch-node kind-${n.kind}`, transform: `translate(${x} ${y})`,
+      class: `arch-node kind-${n.kind} shape-${shape}`, transform: `translate(${x} ${y})`,
       'data-node': n.id, tabindex: 0, role: 'button', 'aria-label': `${n.label}. ${n.sub}`,
     });
-    if (D) {
-      g.append(
-        el('polygon', { class: 'arch-node_top', points: `0,0 ${W},0 ${W + D},${-D} ${D},${-D}` }),
-        el('polygon', { class: 'arch-node_side', points: `${W},0 ${W + D},${-D} ${W + D},${H - D} ${W},${H}`, fill: this.stipple }),
-      );
+    const box = (attrs: Record<string, string | number>) => el('rect', { class: 'arch-node_box', width: W, height: H, rx: 3, ...attrs });
+    const detail = (d: string) => el('path', { class: 'arch-node_detail', d });
+    const shadow = (node: SVGElement) => {
+      const s = node.cloneNode() as SVGElement;
+      s.setAttribute('class', 'arch-node_shadow');
+      s.setAttribute('transform', 'translate(4 4)');
+      return s;
+    };
+    const isoFaces = () => [
+      el('polygon', { class: 'arch-node_top', points: `0,0 ${W},0 ${W + D},${-D} ${D},${-D}` }),
+      el('polygon', { class: 'arch-node_side', points: `${W},0 ${W + D},${-D} ${W + D},${H - D} ${W},${H}`, fill: this.stipple }),
+    ];
+    let off = 0;
+    let room = W - 46 - 12;
+
+    switch (shape) {
+      case 'person': {
+        const b = box({ rx: H / 2 });
+        g.append(b);
+        break;
+      }
+      case 'window': {
+        g.append(...isoFaces(), box({}), detail(`M0 14H${W}`),
+          el('circle', { class: 'arch-node_dot', cx: 9, cy: 7, r: 2 }),
+          el('circle', { class: 'arch-node_dot', cx: 16, cy: 7, r: 2 }),
+          el('circle', { class: 'arch-node_dot', cx: 23, cy: 7, r: 2 }));
+        off = 6;
+        break;
+      }
+      case 'server': {
+        // A rack unit: vents on the right and a status light that glows when the part is busy.
+        const vx = W - 30;
+        g.append(...isoFaces(), box({}),
+          detail(`M${vx} 18h16M${vx} 26h16M${vx} 34h16M${vx} 42h16`),
+          el('circle', { class: 'arch-node_led', cx: vx + 8, cy: 51, r: 2.5 }));
+        room = W - 46 - 40;
+        break;
+      }
+      case 'queue': {
+        const sx = W - 42;
+        g.append(...isoFaces(), box({}), detail(`M${sx} 0V${H}M${sx + 10} 0V${H}M${sx + 20} 0V${H}M${sx + 30} 0V${H}`));
+        room = W - 46 - 48;
+        break;
+      }
+      case 'cylinder': {
+        const ry = 7;
+        const body = el('path', { class: 'arch-node_box', d: `M0 ${ry}V${H - ry}A${W / 2} ${ry} 0 0 0 ${W} ${H - ry}V${ry}` });
+        g.append(shadow(body), body,
+          el('ellipse', { class: 'arch-node_top', cx: W / 2, cy: ry, rx: W / 2, ry }),
+          detail(`M0 ${H / 2 + 2}A${W / 2} ${ry} 0 0 0 ${W} ${H / 2 + 2}`));
+        off = 5;
+        break;
+      }
+      case 'bucket': {
+        const ry = 7, inset = 12;
+        const body = el('path', { class: 'arch-node_box', d: `M0 ${ry}L${inset} ${H - ry}A${W / 2 - inset} ${ry - 1} 0 0 0 ${W - inset} ${H - ry}L${W} ${ry}` });
+        g.append(shadow(body), body, el('ellipse', { class: 'arch-node_top', cx: W / 2, cy: ry, rx: W / 2, ry }));
+        off = 4;
+        room = W - 46 - 18;
+        break;
+      }
+      case 'cloud': {
+        const pts: [number, number][] = [[18, H], [12, 30], [W * 0.3, 14], [W * 0.62, 12], [W - 18, 28], [W - 14, H]];
+        let d = `M${pts[0][0]} ${pts[0][1]}`;
+        for (let i = 1; i < pts.length; i++) {
+          const [ax, ay] = pts[i - 1], [bx, by] = pts[i];
+          const r = Math.hypot(bx - ax, by - ay) * 0.62;
+          d += `A${r} ${r} 0 0 1 ${bx} ${by}`;
+        }
+        d += 'Z';
+        const body = el('path', { class: 'arch-node_box', d });
+        g.append(shadow(body), body);
+        off = 8;
+        room = W - 46 - 22;
+        break;
+      }
+      case 'chip': {
+        const b = box({});
+        let pins = '';
+        for (let px = 30; px < W - 10; px += 18) pins += `M${px} -5V0M${px} ${H}v5`;
+        g.append(shadow(b), b, detail(pins));
+        break;
+      }
+      default: {
+        g.append(...isoFaces(), box({}));
+      }
     }
-    g.append(el('rect', { class: 'arch-node_box', width: W, height: H, rx: n.kind === 'actor' ? H / 2 : 2 }));
-    const icon = el('g', { transform: `translate(16 ${H / 2 - 9}) scale(0.75)`, class: 'arch-node_icon' });
+
+    const icon = el('g', { transform: `translate(16 ${H / 2 - 9 + off}) scale(0.75)`, class: 'arch-node_icon' });
     icon.append(el('path', { d: ICONS[n.kind] ?? ICONS.other }));
-    const label = el('text', { x: 46, y: H / 2 - 3, class: 'arch-node_label' });
-    // Clipped to the box by measured width: the full names live in the drawer.
-    const room = W - 46 - 12;
+    const label = el('text', { x: 46, y: H / 2 - 3 + off, class: 'arch-node_label' });
+    // Clipped to the shape by measured width: the full names live in the drawer.
     label.textContent = fitText(n.label, FONT_LABEL, room);
-    const sub = el('text', { x: 46, y: H / 2 + 14, class: 'arch-node_sub' });
+    const sub = el('text', { x: 46, y: H / 2 + 14 + off, class: 'arch-node_sub' });
     sub.textContent = fitText(n.sub.toUpperCase(), FONT_SUB, room, 0.6);
     g.append(icon, label, sub);
-    if (n.inferred) g.append(el('circle', { cx: W - 10, cy: 10, r: 2.5, class: 'arch-node_inferred' }));
+    if (n.inferred) g.append(el('circle', { cx: W - 10, cy: 10 + off, r: 2.5, class: 'arch-node_inferred' }));
     return g;
   }
 
@@ -338,8 +479,16 @@ export class Chart {
     return ['r', 'r'];
   }
 
-  private route(edgeG: SVGGElement, labelG: SVGGElement, grow: (x: number, y: number) => void): void {
-    const { W, H } = this;
+  /**
+   * Draw every edge and its label. Clears whatever it drew before, so it can safely run again.
+   *
+   * Two passes. First every curve is worked out, so that when labels are placed in the second pass
+   * they can avoid all the other lines, not just boxes and earlier labels.
+   */
+  private route(grow: (x: number, y: number) => void = () => {}): void {
+    const { W, H, edgeG, labelG } = this;
+    edgeG.replaceChildren();
+    labelG.replaceChildren();
     type End = { e: GEdge; end: 0 | 1; other: Placed };
     const bySide = new Map<string, End[]>();
     const sideOf = new Map<string, [Side, Side]>();
@@ -363,7 +512,7 @@ export class Chart {
       list.forEach((v, i) => {
         const f = k === 1 ? 0.5 : i / (k - 1);
         // Arrows into the top or right of a block land on its top/side face, so they read as 3D.
-        const d = p.spec.kind === 'actor' ? 0 : DEPTH / 2;
+        const d = depthOf(p.spec.kind) / 2;
         const pt = horizontal
           ? { x: p.x + W * (k === 1 ? 0.5 : 0.22 + 0.56 * f) + (side === 't' ? d : 0), y: side === 't' ? p.y - d : p.y + H }
           : { x: side === 'l' ? p.x : p.x + W + d, y: p.y + (k === 1 ? H / 2 : 12 + (H - 24) * f) - (side === 'r' ? d : 0) };
@@ -379,8 +528,10 @@ export class Chart {
     };
     loops.sort((a, b) => span(a) - span(b));
     const loopRank = new Map(loops.map((e, i) => [e.id, i]));
-    const taken = [...this.placed.values()].map((p) => ({ x0: p.x - 4, x1: p.x + W + DEPTH + 4, y0: p.y - DEPTH - 4, y1: p.y + H + 4 }));
 
+    // Pass 1: every curve.
+    type Curve = { e: GEdge; p1: Pt; c1: Pt; c2: Pt; p2: Pt };
+    const curves: Curve[] = [];
     for (const e of this.spec.edges) {
       const s = sideOf.get(e.id);
       if (!s) continue;
@@ -394,8 +545,19 @@ export class Chart {
         const d = Math.abs(n1[0] ? p2.x - p1.x : p2.y - p1.y);
         k1 = k2 = Math.max(30, d * 0.5);
       }
-      const c1 = { x: p1.x + n1[0] * k1, y: p1.y + n1[1] * k1 };
-      const c2 = { x: p2.x + n2[0] * k2, y: p2.y + n2[1] * k2 };
+      curves.push({ e, p1, p2, c1: { x: p1.x + n1[0] * k1, y: p1.y + n1[1] * k1 }, c2: { x: p2.x + n2[0] * k2, y: p2.y + n2[1] * k2 } });
+    }
+
+    // Obstacles for labels: boxes, labels as they are placed, and points sampled along every line.
+    const taken = [...this.placed.values()].map((p) => ({ x0: p.x - 4, x1: p.x + W + DEPTH + 4, y0: p.y - DEPTH - 4, y1: p.y + H + 4 }));
+    const samples = curves.flatMap((c) => {
+      const out: { id: string; x: number; y: number }[] = [];
+      for (let t = 0.04; t < 0.97; t += 0.04) out.push({ id: c.e.id, x: bez(c.p1.x, c.c1.x, c.c2.x, c.p2.x, t), y: bez(c.p1.y, c.c1.y, c.c2.y, c.p2.y, t) });
+      return out;
+    });
+
+    // Pass 2: draw, and place each label where it covers the least.
+    for (const { e, p1, c1, c2, p2 } of curves) {
       const d = `M${p1.x} ${p1.y} C${c1.x} ${c1.y} ${c2.x} ${c2.y} ${p2.x} ${p2.y}`;
       grow(c1.x * 0.75 + p1.x * 0.25, c1.y * 0.75 + p1.y * 0.25);
       grow(c2.x * 0.75 + p2.x * 0.25, c2.y * 0.75 + p2.y * 0.25);
@@ -405,10 +567,6 @@ export class Chart {
       g.append(el('path', { d, class: 'arch-edge_hit' }), path);
       edgeG.append(g);
 
-      /*
-       * Labels slide along their own curve until they clear every box and every label already
-       * placed. Staying on the curve keeps the badge on its arrow, which a plain nudge would not.
-       */
       const shown = fitText(`// ${e.label.toUpperCase()}`, FONT_PILL, 200, 0.5);
       const tw = textWidth(shown, FONT_PILL, 0.5) + 14;
       const box = (t: number, dx = 0, dy = 0) => {
@@ -417,18 +575,20 @@ export class Chart {
           ? { x, y, x0: x - 13, x1: x + 14 + tw + 2, y0: y - 13, y1: y + 13 }
           : { x, y, x0: x - tw / 2 - 2, x1: x + tw / 2 + 2, y0: y - 12, y1: y + 12 };
       };
-      const overlap = (b: ReturnType<typeof box>) => taken.reduce((sum, r) =>
-        sum + Math.max(0, Math.min(b.x1, r.x1) - Math.max(b.x0, r.x0)) * Math.max(0, Math.min(b.y1, r.y1) - Math.max(b.y0, r.y0)), 0);
+      // Covering a box or a label is worst; sitting on someone else's line is bad too.
+      const cost = (b: ReturnType<typeof box>) =>
+        taken.reduce((sum, r) => sum + Math.max(0, Math.min(b.x1, r.x1) - Math.max(b.x0, r.x0)) * Math.max(0, Math.min(b.y1, r.y1) - Math.max(b.y0, r.y0)), 0)
+        + 60 * samples.filter((q) => q.id !== e.id && q.x > b.x0 && q.x < b.x1 && q.y > b.y0 && q.y < b.y1).length;
       // Along the curve first (the badge stays on its arrow), then nudged just off it.
       const tries: [number, number, number][] = [];
       for (const t of [0.5, 0.4, 0.6, 0.3, 0.7, 0.2, 0.8]) tries.push([t, 0, 0]);
-      for (const t of [0.5, 0.35, 0.65]) for (const [dx, dy] of [[0, -22], [0, 22], [-tw / 2 - 16, 0], [0, -44], [0, 44]]) tries.push([t, dx, dy]);
+      for (const t of [0.5, 0.35, 0.65]) for (const [dx, dy] of [[0, -22], [0, 22], [-tw / 2 - 16, 0], [-tw - 20, 0], [0, -44], [0, 44]]) tries.push([t, dx, dy]);
       let at = box(0.5), best = Infinity;
       for (const [t, dx, dy] of tries) {
         const b = box(t, dx, dy);
-        const o = overlap(b);
-        if (o < best) { best = o; at = b; }
-        if (o === 0) break;
+        const c = cost(b);
+        if (c < best) { best = c; at = b; }
+        if (c === 0) break;
       }
       taken.push(at);
       const mx = at.x, my = at.y;
@@ -457,6 +617,7 @@ export class Chart {
       this.routed.set(e.id, { spec: e, g, path, label });
     }
   }
+
 
   /* ------------------------------------------------------------------ interaction */
 
@@ -500,6 +661,40 @@ export class Chart {
     this.paint();
   }
 
+  /** Light these parts until told otherwise; everything else dims. */
+  spotlight(nodes: string[] | null, edges: string[] = []): void {
+    this.spot = nodes ? { nodes: new Set(nodes), edges: new Set(edges) } : null;
+    this.paint();
+  }
+
+  /** Every edge whose two ends are both in `nodes`. */
+  edgesAmong(nodes: string[]): string[] {
+    const set = new Set(nodes);
+    return [...this.routed.values()].filter((r) => set.has(r.spec.from) && set.has(r.spec.to)).map((r) => r.spec.id);
+  }
+
+  /**
+   * Move the camera so these nodes fill the view, never closer than about 1:1 so text stays crisp.
+   * With no nodes it pulls back to the whole chart.
+   */
+  frame(nodes: string[] | null, animate = true): void {
+    const ps = (nodes ?? []).map((id) => this.placed.get(id)).filter((p): p is Placed => !!p);
+    if (!ps.length) { this.resetView(animate); return; }
+    const r = this.svg.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    const pad = 64;
+    let x0 = Math.min(...ps.map((p) => p.x)) - pad, x1 = Math.max(...ps.map((p) => p.x + this.W + DEPTH)) + pad;
+    let y0 = Math.min(...ps.map((p) => p.y - DEPTH)) - pad, y1 = Math.max(...ps.map((p) => p.y + this.H)) + pad;
+    const maxScale = 1.1;
+    let w = Math.max(x1 - x0, r.width / maxScale), h = Math.max(y1 - y0, r.height / maxScale);
+    // Match the frame's shape, so the centring is exact rather than left to preserveAspectRatio.
+    const aspect = r.width / r.height;
+    if (w / h < aspect) w = h * aspect; else h = w / aspect;
+    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2;
+    x0 = cx - w / 2; y0 = cy - h / 2;
+    this.moveTo({ x: x0, y: y0, w, h }, animate);
+  }
+
   private paint(): void {
     const nodes = new Set<string>();
     const edges = new Set<string>();
@@ -523,6 +718,10 @@ export class Chart {
         nodes.add(this.hover.id);
         (this.adjacency.get(this.hover.id) ?? []).forEach(addEdge);
       } else addEdge(this.hover.id);
+    } else if (this.spot) {
+      any = true;
+      this.spot.nodes.forEach((id) => nodes.add(id));
+      this.spot.edges.forEach(addEdge);
     }
 
     this.svg.classList.toggle('has-focus', any);
@@ -659,7 +858,8 @@ export class Chart {
     this.svg.addEventListener('wheel', (ev) => {
       if (!(ev.ctrlKey || ev.metaKey)) return;
       ev.preventDefault();
-      const dy = ev.deltaMode === 1 ? ev.deltaY * 16 : ev.deltaY;
+      // A pinch sends many small deltas; a mouse wheel notch sends one big one. Cap the big ones.
+      const dy = gsap.utils.clamp(-40, 40, ev.deltaMode === 1 ? ev.deltaY * 16 : ev.deltaY);
       this.zoom(Math.exp(-dy * 0.01), ev.clientX, ev.clientY);
     }, { passive: false });
 
@@ -717,7 +917,21 @@ export class Chart {
 
   private go(i: number): void {
     const r = this.routed.get(this.order[i]);
-    if (!r) return;
+    if (!r) {
+      // A step with no drawable arrow (say, a part talking to itself): show its text, then move on.
+      this.tl?.kill();
+      this.index = i;
+      this.paint();
+      this.onStep(i, this.playing);
+      if (this.playing) {
+        this.tl = gsap.timeline().to({}, { duration: this.holds[i] ?? 2.5 }).add(() => {
+          if (!this.playing) return;
+          if (this.index < this.order.length - 1) this.go(this.index + 1);
+          else { this.playing = false; this.onStep(this.index, false); }
+        });
+      }
+      return;
+    }
     this.tl?.kill();
     this.index = i;
     this.paint();
@@ -758,6 +972,7 @@ export class Chart {
   }
 
   destroy(): void {
+    this.sizer?.disconnect();
     this.tl?.kill();
     gsap.killTweensOf(this.vb);
   }
